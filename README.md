@@ -7,6 +7,7 @@
 - Система должна регистрировать клиента с обязательными полями:  
   - ФИО  
   - Номер телефона  
+  - Email
   - Дата рождения  
   - Город вылета  
 - Система должна предоставлять возможность внесения паспортных данных клиента при заключении договора.  
@@ -142,3 +143,60 @@
     - Дата и время (с учётом часового пояса, в котором расположен отель)  
     - Предпочтительный способ связи  
     - Тема
+
+# ERD
+```plantuml
+@startuml crm_erd
+
+skinparam linetype ortho
+
+entity Client {
+  * client_id
+  --
+  full_name
+  phone
+  email
+  birth_date
+  departure_city
+  is_blacklisted
+}
+
+entity Interaction {
+  * interaction_id
+  --
+  date_time
+  type
+  summary
+}
+
+entity Booking {
+  * booking_id
+  --
+  status
+  creation_date
+}
+
+entity Tour {
+  * tour_id
+  --
+  name
+  start_date
+  end_date
+  price
+}
+
+entity Hotel {
+  * hotel_id
+  --
+  name
+  address
+  star_rating
+}
+
+Client ||-o{ Interaction
+Client ||-o{ Booking
+Booking }|--|| Tour
+Tour ||-o{ Hotel
+
+@enduml
+```
