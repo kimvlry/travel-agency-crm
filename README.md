@@ -509,6 +509,7 @@ HotelInteraction ||--|| HotelNextContactReminder
 
 Booking ||--o{ BookingAgreement
 Assignee ||--o{ Contract
+Assignee ||--|| Client 
 ContractTemplate ||--o{ Contract
 Contract ||--o{ AgreementConsent
 ConsentTemplate ||--o{ AgreementConsent
