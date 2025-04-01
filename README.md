@@ -188,9 +188,9 @@ entity client_interaction {
   --
   client_id: INTEGER <<FK>> (client)
   interaction_date_utc: TIMESTAMP NOT NULL
-  communication_channel: communication_channel NOT NULL
+  communication_channel: communication_channels NOT NULL
   meeting_location: VARCHAR(255)
-  interaction_type: interaction_type NOT NULL
+  interaction_type: interaction_types NOT NULL
   summary: TEXT
   agreements: TEXT
   next_contact_reminder_id: INTEGER <<FK>> (client_next_contact_reminder)
@@ -200,7 +200,7 @@ entity client_next_contact_reminder {
   + reminder_id: INTEGER <<PK>>
   --
   client_id: INTEGER <<FK>> (client)
-  communication_channel: communication_channel NOT NULL
+  communication_channel: communication_channels NOT NULL
   message: TEXT NOT NULL
   send_date: TIMESTAMP NOT NULL
 }
@@ -209,7 +209,7 @@ entity client_personal_notification {
   + notification_id: INTEGER <<PK>>
   --
   client_id: INTEGER <<FK>> (client)
-  communication_channel: communication_channel NOT NULL
+  communication_channel: communication_channels NOT NULL
   template_id: INTEGER <<FK>> (notification_template)
   send_date: TIMESTAMP NOT NULL
 }
@@ -217,7 +217,7 @@ entity client_personal_notification {
 entity notification_template {
   + template_id: INTEGER <<PK>>
   --
-  type: notification_type NOT NULL
+  type: notification_types NOT NULL
   message_template: TEXT NOT NULL
 }
 
@@ -228,8 +228,8 @@ entity notification_template {
 entity booking {
   + booking_id: INT <<PK>>
   --
-  tour_id: INT <<FK>> 
-  status: booking_status DEFAULT 'draft'
+  tour_id: INT <<FK>> (tour)
+  status: booking_statuses DEFAULT 'draft'
   contract_number: VARCHAR(50) UNIQUE
   payment_link: TEXT
   created_at: DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -237,22 +237,22 @@ entity booking {
 }
 
 entity client_booking {
-  + client_id: INT <<PK,FK>> 
-  + booking_id: INT <<PK,FK>> 
+  + client_id: INT <<PK,FK>> (client)
+  + booking_id: INT <<PK,FK>> (booking)
 }
 
 entity booking_agreement {
   + agreement_id: INT <<PK>>
   --
-  client_id: INT <<FK>> 
-  booking_id: INT <<FK>> 
+  client_id: INT <<FK>> (client)
+  booking_id: INT <<FK>> (booking)
   signed_date: TIMESTAMP NOT NULL
 }
 
 entity assignee {
   + assignee_id: INT <<PK>>
   --
-  client_id: INT <<FK>> 
+  client_id: INT <<FK>> (client)
 }
 
 entity contract_template {
@@ -267,22 +267,22 @@ entity contract_template {
 entity contract {
   + contract_id: INT <<PK>>
   --
-  assignee_id: INT <<FK>> 
-  contract_template_id: INT <<FK>>
+  assignee_id: INT <<FK>> (assigne)
+  contract_template_id: INT <<FK>> (contract_template)
   issue_date: TIMESTAMP NOT NULL
   sign_date: TIMESTAMP
-  status: consent_status NOT NULL
+  status: consent_statuses NOT NULL
   total_price: DECIMAL(10,2) NOT NULL
 }
 
 entity agreement_consent {
   + consent_id: INT <<PK>>
   --
-  assignee_id: INT <<FK>> 
-  contract_id: INT <<FK>> 
+  assignee_id: INT <<FK>> (assignee)
+  contract_id: INT <<FK>> (contract)
   consent_type: consent_types NOT NULL
   consent_date: TIMESTAMP NOT NULL
-  status: consent_status NOT NULL
+  status: consent_statuses NOT NULL
 }
 
 entity consent_template {
@@ -296,7 +296,7 @@ entity consent_template {
 entity payment_link {
   + payment_link_id: INT <<PK>>
   --
-  booking_id: INT <<FK>> 
+  booking_id: INT <<FK>> (booking)
   payment_url: VARCHAR(255) NOT NULL
   qr_code: VARCHAR(255) NOT NULL
   status: VARCHAR(50) NOT NULL
@@ -312,8 +312,8 @@ entity tour {
   title: VARCHAR(255) NOT NULL UNIQUE
   price_eur: DECIMAL(10,2) NOT NULL
   quota: INT NOT NULL
-  meals_type : meals_type
-  is_lastminute: BOOLEAN DEFAULT FALSE
+  meals_type : meals_types
+  is_lastminute: BOOLEAN DEFAULT FALSE 
   lastminute_approved: BOOLEAN
   base_duration_days: INT NOT NULL
 }
@@ -322,7 +322,7 @@ entity tour {
 entity tour_iteration { 
   + schedule_id: INT <<PK>>
   --
-  tour_id: INT <<FK>> 
+  tour_id: INT <<FK>> (tour)
   start_date: DATE NOT NULL
   end_date: DATE NOT NULL
   --
@@ -332,14 +332,14 @@ entity tour_iteration {
 entity tour_route {
   + route_id: INT <<PK>>
   --
-  tour_id: INT <<FK>> 
+  tour_id: INT <<FK>> (tour)
   order_position: INT NOT NULL
 }
 
 entity route_point {
   + point_id: INT <<PK>>
   --
-  route_id: INT <<FK>> 
+  route_id: INT <<FK>> (tour_route)
   name: VARCHAR(255) NOT NULL
   address: TEXT NOT NULL
 }
@@ -347,9 +347,9 @@ entity route_point {
 entity transfer {
   + transfer_id: INT <<PK>>
   --
-  tour_id: INT <<FK>> 
-  departure_point: point_id NOT NULL <<FK>>
-  arrival_point: point_id NOT NULL <<FK>>
+  tour_id: INT <<FK>> (tour)
+  departure_point: point_id NOT NULL <<FK>> (route_point)
+  arrival_point: point_id NOT NULL <<FK>> (route_point)
   transport_company: VARCHAR(255) NOT NULL
   vehicle_model: VARCHAR(255)
   departure_time: DATETIME NOT NULL
@@ -359,7 +359,7 @@ entity transfer {
 entity excursion {
   + excursion_id: INT <<PK>>
   --
-  tour_id: INT <<FK>> 
+  tour_id: INT <<FK>> (tour)
   name: VARCHAR(255) NOT NULL
   meeting_location : point_id NOT NULL
   organizer_name: VARCHAR(255) NOT NULL
@@ -371,8 +371,8 @@ entity excursion {
 entity insurance {
   + insurance_id: INT <<PK>>
   --
-  tour_id: INT <<FK>> 
-  coverage_type: ENUM('medical','lost_luggage') NOT NULL
+  tour_id: INT <<FK>> (tour)
+  coverage_type: insurance_types NOT NULL
   company_name: VARCHAR(255) NOT NULL
   company_phone: VARCHAR(20) NOT NULL
   company_email: VARCHAR(255) NOT NULL
@@ -391,20 +391,20 @@ entity hotel {
 entity hotel_interaction {
   + interaction_id: INT <<PK>>
   --
-  hotel_id: INT <<FK>> 
+  hotel_id: INT <<FK>> (hotel)
   interaction_date_utc: DATETIME NOT NULL
-  communication_channel: communication_channel NOT NULL
-  interaction_type: interaction_type NOT NULL
+  communication_channel: communication_channels NOT NULL
+  interaction_types: interaction_types NOT NULL
   summary: TEXT
   agreements: TEXT
-  next_contact_reminder : reminder_id <<FK>>
+  next_contact_reminder : reminder_id <<FK>> (hotel_next_contact_reminder)
 }
 
 entity hotel_next_contact_reminder {
   + reminder_id: INT <<PK>>
   --
   hotel_id: INT <<FK>> 
-  communication_channel: communication_channel NOT NULL
+  communication_channel: communication_channels NOT NULL
   message: TEXT NOT NULL
   send_date: TIMESTAMP NOT NULL
 }
@@ -414,7 +414,7 @@ entity promotion {
   --
   title: VARCHAR(255) NOT NULL
   content: TEXT NOT NULL
-  promo_type: promotion_type NOT NULL
+  promo_type: promotion_types NOT NULL
   created_at: DATETIME DEFAULT CURRENT_TIMESTAMP
 }
 
@@ -423,21 +423,21 @@ entity promotion {
 ' ENUM Definitions
 
 note top of client_interaction
-  **communication_channel**:
+  **communication_channels**:
   - phone
   - telegram
   - whatsapp
   - email
   - meeting
   
-  **interaction_type**:
+  **interaction_types**:
   - discussion
   - agreement
   - complaint
 end note
 
 note top of promotion
-  **promotion_type**
+  **promotion_types**
   - new_tours
   - hot_tours
   - early_booking
@@ -445,7 +445,7 @@ note top of promotion
 end note
 
 note top of booking
-  **booking_status**:
+  **booking_statuses**:
   - draft
   - pending_signature
   - pending_payment
@@ -461,31 +461,37 @@ note top of agreement_consent
   - contract_terms
   - ad
   
-  **consent_status**:
+  **consent_statuses**:
   - granted
   - pending
   - revoked
 end note
 
 note top of hotel_interaction
-  **interaction_type**:
+  **interaction_types**:
   - discussion
   - agreement
   - claim
 end note
 
 note top of tour
-  **meals_type**
+  **meals_types**
   - breakfast
   - half_board
   - full_board
 end note
 
 note top of notification_template
-  **notification_type**:
+  **notification_types**:
   - passport_expiry
   - flight_reminder
   - payment_reminder
+end note
+
+note top of insurance
+  **insurance_types**
+  - medical
+  - lost_luggage
 end note
 
 
