@@ -164,7 +164,12 @@ entity clients{
   is_blacklisted: BOOLEAN DEFAULT FALSE
 }
 
-' entity client_blacklist { ban_reason: TEXT }
+entity client_bans { 
+  + ban_id: INTEGER <<PK>>
+  --
+  client_id: INTEGER <<FK>> NOT NULL
+  ban_reason: TEXT 
+}
 
 entity cities {
   + city_id: INTEGER <<PK>>
