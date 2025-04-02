@@ -444,7 +444,7 @@ note top of promotions
   - birthday_promo
 end note
 
-note top of booking
+note top of bookings
   **booking_statuses**:
   - draft
   - pending_signature
@@ -474,7 +474,7 @@ note top of hotel_interactions
   - claim
 end note
 
-note top of tour
+note top of tours
   **meals_types**
   - breakfast
   - half_board
@@ -502,12 +502,12 @@ clients||--o{ passports
 clients||--o{ foreign_passports
 clients||--o{ client_interactions
 clients||--o{ client_bookings
-client_bookings }o--|| booking
+client_bookings }o--|| bookings
 client_interactions ||--|| client_next_contact_reminders
 client_personal_notification }o--|| notification_templates
 clients||--o{ client_personal_notification
 
-bookings||--|| tour
+bookings||--|| tours
 tours||--o{ tour_routes
 tours||--o{ tour_iterations
 tour_routes ||--o{ route_points
