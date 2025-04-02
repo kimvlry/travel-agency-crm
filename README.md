@@ -160,12 +160,21 @@ entity clients{
   phone: VARCHAR(20) NOT NULL
   email: VARCHAR(255) NOT NULL
   birth_date: DATE NOT NULL
-  departure_city: VARCHAR(100) NOT NULL
+  city_id: VARCHAR(100) NOT NULL
   is_blacklisted: BOOLEAN DEFAULT FALSE
+}
+
+' entity client_blacklist { ban_reason: TEXT }
+
+entity cities {
+  + city_id: INTEGER <<PK>>
+  --
+  city_name: VARCHAR(255) NOT NULL
+  country_name: VARCHAR(a55) NOT NULL
   timezone: VARCHAR(50) NOT NULL
 }
 
-entity passports{
+entity client_passports{
   + passport_id: INTEGER <<PK>>
   --
   client_id: INTEGER <<FK>> (clients)
@@ -174,7 +183,7 @@ entity passports{
   issue_date: DATE NOT NULL
 }
 
-entity foreign_passports{
+entity client_foreign_passports{
   + passport_id: INTEGER <<PK>>
   --
   client_id: INTEGER <<FK>> (clients)
@@ -193,14 +202,14 @@ entity client_interactions {
   interaction_type: interaction_types NOT NULL
   summary: TEXT
   agreements: TEXT
-  next_contact_reminder_id: INTEGER <<FK>> (client_next_contact_reminders)
+  reminder_id: INTEGER <<FK>> (client_next_contact_reminders)
 }
 
 entity client_next_contact_reminders {
   + reminder_id: INTEGER <<PK>>
   --
   client_id: INTEGER <<FK>> (clients)
-  communication_channel: communication_channels NOT NULL
+  preferred_communication_channel: communication_channels NOT NULL
   message: TEXT NOT NULL
   send_date: TIMESTAMP NOT NULL
 }
@@ -209,7 +218,7 @@ entity client_personal_notification {
   + notification_id: INTEGER <<PK>>
   --
   client_id: INTEGER <<FK>> (clients)
-  communication_channel: communication_channels NOT NULL
+  preferred_communication_channel: communication_channels NOT NULL
   template_id: INTEGER <<FK>> (notification_templates)
   send_date: TIMESTAMP NOT NULL
 }
@@ -218,7 +227,8 @@ entity notification_templates {
   + template_id: INTEGER <<PK>>
   --
   type: notification_types NOT NULL
-  message_template: TEXT NOT NULL
+  message_template: TEXT
+  promo_id: INTEGER 
 }
 
 
@@ -280,7 +290,7 @@ entity agreement_consents {
   --
   assignee_id: INT <<FK>> (assignees)
   contract_id: INT <<FK>> (contracts)
-  consent_type: consent_types NOT NULL
+  consent_template_id: INTEGER <<FK>> NOT NULL
   consent_date: TIMESTAMP NOT NULL
   status: consent_statuses NOT NULL
 }
@@ -404,7 +414,7 @@ entity hotel_next_contact_reminders {
   + reminder_id: INT <<PK>>
   --
   hotel_id: INT <<FK>> 
-  communication_channel: communication_channels NOT NULL
+  preferred_communication_channel: communication_channels NOT NULL
   message: TEXT NOT NULL
   send_date: TIMESTAMP NOT NULL
 }
@@ -441,7 +451,6 @@ note top of promotions
   - new_tours
   - hot_tours
   - early_booking
-  - birthday_promo
 end note
 
 note top of bookings
@@ -486,6 +495,7 @@ note top of notification_templates
   - passport_expiry
   - flight_reminder
   - payment_reminder
+  - birthday_promo
 end note
 
 note top of insurances
@@ -498,14 +508,16 @@ end note
 
 ' Relationships
 
-clients||--o{ passports
-clients||--o{ foreign_passports
+clients||--o{ client_passports
+clients||--o{ client_foreign_passports
+clients||--|| cities
 clients||--o{ client_interactions
 clients||--o{ client_bookings
 client_bookings }o--|| bookings
 client_interactions ||--|| client_next_contact_reminders
 client_personal_notification }o--|| notification_templates
 clients||--o{ client_personal_notification
+notification_templates ||--|| promotions
 
 bookings||--|| tours
 tours||--o{ tour_routes
