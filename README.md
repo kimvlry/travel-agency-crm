@@ -457,7 +457,7 @@ package "hotel" {
 
 ' ENUM Definitions
 
-note top of client_interactions
+note right of client_interactions
   **communication_channels**:
   - phone
   - telegram
@@ -471,14 +471,14 @@ note top of client_interactions
   - complaint
 end note
 
-note top of promotions
+note right of promotions
   **promotion_types**
   - new_tours
   - hot_tours
   - early_booking
 end note
 
-note top of bookings
+note right of bookings
   **booking_statuses**:
   - draft
   - pending_signature
@@ -489,7 +489,7 @@ note top of bookings
   - canceled
 end note
 
-note top of agreement_consents
+note right of agreement_consents
   **consent_types**:
   - personal_data
   - contract_terms
@@ -501,21 +501,21 @@ note top of agreement_consents
   - revoked
 end note
 
-note top of hotel_interactions
+note right of hotel_interactions
   **interaction_types**:
   - discussion
   - agreement
   - claim
 end note
 
-note top of tours
+note right of tours
   **meals_types**
   - breakfast
   - half_board
   - full_board
 end note
 
-note top of notification_templates
+note right of notification_templates
   **notification_types**:
   - passport_expiry
   - flight_reminder
@@ -523,13 +523,13 @@ note top of notification_templates
   - birthday_promo
 end note
 
-note top of insurances
+note right of insurances
   **insurance_types**
   - medical
   - lost_luggage
 end note
 
-note top of passports
+note right of passports
   **passport_types**
   - internal
   - foreign
