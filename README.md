@@ -149,6 +149,7 @@
 ```plantuml
 @startuml
 skinparam Linetype ortho
+left to right direction
 
 package "client" {
   entity clients{
