@@ -150,290 +150,309 @@
 @startuml
 skinparam Linetype ortho
 
+package "client" {
+  entity clients{
+    + id: INTEGER <<PK>> 
+    --
+    full_name: VARCHAR(255) NOT NULL
+    phone: VARCHAR(20) NOT NULL
+    email: VARCHAR(255) NOT NULL
+    birth_date: DATE NOT NULL
+    city_id: VARCHAR(100) NOT NULL
+    is_blacklisted: BOOLEAN DEFAULT FALSE
+  }
 
-' ----- clients-----
+  entity bans { 
+    + id: INTEGER <<PK>>
+    --
+    client_id: INTEGER <<FK>> NOT NULL
+    ban_reason: TEXT 
+  }
 
-entity clients{
-  + client_id: INTEGER <<PK>> 
-  --
-  full_name: VARCHAR(255) NOT NULL
-  phone: VARCHAR(20) NOT NULL
-  email: VARCHAR(255) NOT NULL
-  birth_date: DATE NOT NULL
-  city_id: VARCHAR(100) NOT NULL
-  is_blacklisted: BOOLEAN DEFAULT FALSE
+  entity cities {
+    + id: INTEGER <<PK>>
+    --
+    name: VARCHAR(255) NOT NULL
+    country_name: VARCHAR(a55) NOT NULL
+    timezone: VARCHAR(50) NOT NULL
+  }
+
+  entity passports{
+    + id: INTEGER <<PK>>
+    --
+    client_id: INTEGER <<FK>> (clients)
+    type: passport_types NOT NULL
+    number: VARCHAR(50) NOT NULL
+    expiration_date: DATE NOT NULL
+    issue_date: DATE NOT NULL
+    --
+    UNIQUE(client_id, type)
+  }
+
+  entity client_interactions {
+    + id: INTEGER <<PK>>
+    --
+    client_id: INTEGER <<FK>> (clients)
+    date_utc: TIMESTAMP NOT NULL
+    communication_channel: communication_channels NOT NULL
+    meeting_location: VARCHAR(255)
+    type: interaction_types NOT NULL
+    summary: TEXT
+    agreements: TEXT
+    reminder_id: INTEGER <<FK>> (client_next_contact_reminders)
+  }
+
+  entity client_next_contact_reminders {
+    + id: INTEGER <<PK>>
+    --
+    client_id: INTEGER <<FK>> (clients)
+    preferred_communication_channel: communication_channels NOT NULL
+    message: TEXT NOT NULL
+    send_date: TIMESTAMP NOT NULL
+  }
+
+  entity client_personal_notification {
+    + id: INTEGER <<PK>>
+    --
+    client_id: INTEGER <<FK>> (clients)
+    preferred_communication_channel: communication_channels NOT NULL
+    template_id: INTEGER <<FK>> (notification_templates)
+    send_date: TIMESTAMP NOT NULL
+  }
+
+  entity notification_templates {
+    + id: INTEGER <<PK>>
+    --
+    type: notification_types NOT NULL
+    message_template: TEXT
+    promo_id: INTEGER 
+  }
+
+  entity promotions {
+    + id: INT <<PK>>
+    --
+    title: VARCHAR(255) NOT NULL
+    content: TEXT NOT NULL
+    promo_type: promotion_types NOT NULL
+    created_at: DATETIME DEFAULT CURRENT_TIMESTAMP
+  }
 }
 
-entity bans { 
-  + ban_id: INTEGER <<PK>>
-  --
-  client_id: INTEGER <<FK>> NOT NULL
-  ban_reason: TEXT 
-}
+package "booking and contract" {
+  entity bookings{
+    + id: INT <<PK>>
+    --
+    tour_id: INT <<FK>> (tours)
+    status: booking_statuses DEFAULT 'draft'
+    contract_number: VARCHAR(50) UNIQUE
+    payment_links: TEXT
+    created_at: DATETIME DEFAULT CURRENT_TIMESTAMP
+    updated_at: DATETIME ON UPDATE CURRENT_TIMESTAMP
+  }
 
-entity cities {
-  + city_id: INTEGER <<PK>>
-  --
-  city_name: VARCHAR(255) NOT NULL
-  country_name: VARCHAR(a55) NOT NULL
-  timezone: VARCHAR(50) NOT NULL
-}
+  entity booking_agreements {
+    + id: INT <<PK>>
+    --
+    client_id: INT <<FK>> (clients)
+    booking_id: INT <<FK>> (bookings)
+    signed_date: TIMESTAMP NOT NULL
+  }
 
-entity passports{
-  + passport_id: INTEGER <<PK>>
-  --
-  client_id: INTEGER <<FK>> (clients)
-  number: VARCHAR(50) NOT NULL
-  expiration_date: DATE NOT NULL
-  issue_date: DATE NOT NULL
-}
+  entity assignees {
+    + id: INT <<PK>>
+    --
+    client_id: INT <<FK>> (clients)
+  }
 
-entity foreign_passports{
-  + passport_id: INTEGER <<PK>>
-  --
-  client_id: INTEGER <<FK>> (clients)
-  number: VARCHAR(50) NOT NULL
-  expiration_date: DATE NOT NULL
-  issue_date: DATE NOT NULL
-}
+  entity contract_templates {
+    + id: INT <<PK>>
+    --
+    name: VARCHAR(100) NOT NULL
+    type: VARCHAR(50) NOT NULL
+    content: TEXT NOT NULL
+    validity_period_days: INT NOT NULL
+  }
 
-entity client_interactions {
-  + interaction_id: INTEGER <<PK>>
-  --
-  client_id: INTEGER <<FK>> (clients)
-  interaction_date_utc: TIMESTAMP NOT NULL
-  communication_channel: communication_channels NOT NULL
-  meeting_location: VARCHAR(255)
-  interaction_type: interaction_types NOT NULL
-  summary: TEXT
-  agreements: TEXT
-  reminder_id: INTEGER <<FK>> (client_next_contact_reminders)
-}
+  entity contracts {
+    + id: INT <<PK>>
+    --
+    assignee_id: INT <<FK>> (assignes)
+    template_id: INT <<FK>> (contract_templates)
+    issue_date: TIMESTAMP NOT NULL
+    sign_date: TIMESTAMP
+    status: consent_statuses NOT NULL
+    total_price: DECIMAL(10,2) NOT NULL
+  }
 
-entity client_next_contact_reminders {
-  + reminder_id: INTEGER <<PK>>
-  --
-  client_id: INTEGER <<FK>> (clients)
-  preferred_communication_channel: communication_channels NOT NULL
-  message: TEXT NOT NULL
-  send_date: TIMESTAMP NOT NULL
-}
+  entity agreement_consents {
+    + id: INT <<PK>>
+    --
+    assignee_id: INT <<FK>> (assignees)
+    contract_id: INT <<FK>> (contracts)
+    template_id: INTEGER <<FK>> NOT NULL
+    date: TIMESTAMP NOT NULL
+    status: consent_statuses NOT NULL
+  }
 
-entity client_personal_notification {
-  + notification_id: INTEGER <<PK>>
-  --
-  client_id: INTEGER <<FK>> (clients)
-  preferred_communication_channel: communication_channels NOT NULL
-  template_id: INTEGER <<FK>> (notification_templates)
-  send_date: TIMESTAMP NOT NULL
-}
+  entity consent_templates {
+    + id: INT <<PK>>
+    --
+    name: VARCHAR(100) NOT NULL
+    type: consent_types NOT NULL 
+    content: TEXT NOT NULL
+  }
 
-entity notification_templates {
-  + template_id: INTEGER <<PK>>
-  --
-  type: notification_types NOT NULL
-  message_template: TEXT
-  promo_id: INTEGER 
-}
-
-
-
-' ----- BOOKING & CONTRACTS -----
-
-entity bookings{
-  + booking_id: INT <<PK>>
-  --
-  tour_id: INT <<FK>> (tours)
-  status: booking_statuses DEFAULT 'draft'
-  contract_number: VARCHAR(50) UNIQUE
-  payment_links: TEXT
-  created_at: DATETIME DEFAULT CURRENT_TIMESTAMP
-  updated_at: DATETIME ON UPDATE CURRENT_TIMESTAMP
-}
-
-entity client_bookings {
-  + client_id: INT <<PK,FK>> (clients)
-  + booking_id: INT <<PK,FK>> (bookings)
-}
-
-entity booking_agreements {
-  + agreement_id: INT <<PK>>
-  --
-  client_id: INT <<FK>> (clients)
-  booking_id: INT <<FK>> (bookings)
-  signed_date: TIMESTAMP NOT NULL
-}
-
-entity assignees {
-  + assignee_id: INT <<PK>>
-  --
-  client_id: INT <<FK>> (clients)
-}
-
-entity contract_templates {
-  + template_id: INT <<PK>>
-  --
-  name: VARCHAR(100) NOT NULL
-  type: VARCHAR(50) NOT NULL
-  template_content: TEXT NOT NULL
-  validity_period_days: INT NOT NULL
-}
-
-entity contracts {
-  + contract_id: INT <<PK>>
-  --
-  assignee_id: INT <<FK>> (assignes)
-  contract_template_id: INT <<FK>> (contract_templates)
-  issue_date: TIMESTAMP NOT NULL
-  sign_date: TIMESTAMP
-  status: consent_statuses NOT NULL
-  total_price: DECIMAL(10,2) NOT NULL
-}
-
-entity agreement_consents {
-  + consent_id: INT <<PK>>
-  --
-  assignee_id: INT <<FK>> (assignees)
-  contract_id: INT <<FK>> (contracts)
-  consent_template_id: INTEGER <<FK>> NOT NULL
-  consent_date: TIMESTAMP NOT NULL
-  status: consent_statuses NOT NULL
-}
-
-entity consent_templates {
-  + consent_template_id: INT <<PK>>
-  --
-  name: VARCHAR(100) NOT NULL
-  type: consent_types NOT NULL 
-  template_content: TEXT NOT NULL
-}
-
-entity payment_links {
-  + payment_link_id: INT <<PK>>
-  --
-  booking_id: INT <<FK>> (bookings)
-  payment_url: VARCHAR(255) NOT NULL
-  qr_code: VARCHAR(255) NOT NULL
-  status: VARCHAR(50) NOT NULL
+  entity payment_links {
+    + id: INT <<PK>>
+    --
+    booking_id: INT <<FK>> (bookings)
+    url: VARCHAR(255) NOT NULL
+    qr_code: VARCHAR(255) NOT NULL
+    status: VARCHAR(50) NOT NULL
+  }
 }
 
 
+package "tour" {
+  entity tours{
+    + id: INT <<PK>>
+    --
+    title: VARCHAR(255) NOT NULL UNIQUE
+    price_eur: DECIMAL(10,2) NOT NULL
+    quota: INT NOT NULL
+    meals_type : meals_types
+    is_lastminute: BOOLEAN DEFAULT FALSE 
+    lastminute_approved: BOOLEAN
+    base_duration_days: INT NOT NULL
+  }
 
-' ----- TOUR -----
+  ' Usually toursrun several iterations during the year
+  entity tour_iterations { 
+    + id: INT <<PK>>
+    --
+    tour_id: INT <<FK>> (tours)
+    start_date: DATE NOT NULL
+    end_date: DATE NOT NULL
+    --
+    UNIQUE(tour_id, start_date)
+  }
 
-entity tours{
-  + tour_id: INT <<PK>>
-  --
-  title: VARCHAR(255) NOT NULL UNIQUE
-  price_eur: DECIMAL(10,2) NOT NULL
-  quota: INT NOT NULL
-  meals_type : meals_types
-  is_lastminute: BOOLEAN DEFAULT FALSE 
-  lastminute_approved: BOOLEAN
-  base_duration_days: INT NOT NULL
-}
+  entity tour_routes {
+    + id: INT <<PK>>
+    --
+    tour_id: INT <<FK>> (tours)
+    order_position: INT NOT NULL
+  }
 
-' Usually toursrun several iterations during the year
-entity tour_iterations { 
-  + schedule_id: INT <<PK>>
-  --
-  tour_id: INT <<FK>> (tours)
-  start_date: DATE NOT NULL
-  end_date: DATE NOT NULL
-  --
-  UNIQUE(tour_id, start_date)
-}
+  entity route_points {
+    + id: INT <<PK>>
+    --
+    route_id: INT <<FK>> (tour_routes)
+    name: VARCHAR(255) NOT NULL
+    address: TEXT NOT NULL
+  }
 
-entity tour_routes {
-  + route_id: INT <<PK>>
-  --
-  tour_id: INT <<FK>> (tours)
-  order_position: INT NOT NULL
-}
+  entity transport_services {
+    + id: INT <<PK>>
+    --
+    company: VARCHAR(255) NOT NULL
+    model: VARCHAR(255)
+  }
 
-entity route_points {
-  + point_id: INT <<PK>>
-  --
-  route_id: INT <<FK>> (tour_routes)
-  name: VARCHAR(255) NOT NULL
-  address: TEXT NOT NULL
-}
+  entity transfers {
+    + id: INT <<PK>>
+    --
+    tour_id: INT <<FK>> (tours)
+    transport_id: INT <<FK>> (transport_services)
+    departure_point: point_id NOT NULL <<FK>> (route_points)
+    arrival_point: point_id NOT NULL <<FK>> (route_points)
+    departure_time: DATETIME NOT NULL
+    duration_time : INTERVAL NOT NULL
+  }
 
-entity transfers {
-  + transfer_id: INT <<PK>>
-  --
-  tour_id: INT <<FK>> (tours)
-  departure_point: point_id NOT NULL <<FK>> (route_points)
-  arrival_point: point_id NOT NULL <<FK>> (route_points)
-  transport_company: VARCHAR(255) NOT NULL
-  vehicle_model: VARCHAR(255)
-  departure_time: DATETIME NOT NULL
-  duration_time : INTERVAL NOT NULL
-}
+  entity organizers {
+    + id: INT <<PK>>
+    --
+    name: VARCHAR(255) NOT NULL
+    phone: VARCHAR(20) NOT NULL
+    email: VARCHAR(255) NOT NULL
+  }
 
-entity excursions {
-  + excursion_id: INT <<PK>>
-  --
-  tour_id: INT <<FK>> (tours)
-  name: VARCHAR(255) NOT NULL
-  meeting_location : point_id NOT NULL
-  organizer_name: VARCHAR(255) NOT NULL
-  organizer_phone: VARCHAR(20) NOT NULL
-  organizer_email: VARCHAR(255) NOT NULL
-  duration_time : INTERVAL
-}
+  entity excursions {
+    + id: INT <<PK>>
+    --
+    tour_id: INT <<FK>> (tours)
+    organizer_id: INT <<FK>> NOT NULL
+    name: VARCHAR(255) NOT NULL
+    meeting_location : point_id NOT NULL
+    duration_time : INTERVAL
+  }
 
-entity insurances {
-  + insurance_id: INT <<PK>>
-  --
-  tour_id: INT <<FK>> (tours)
-  coverage_type: insurance_types NOT NULL
-  company_name: VARCHAR(255) NOT NULL
-  company_phone: VARCHAR(20) NOT NULL
-  company_email: VARCHAR(255) NOT NULL
-}
+  entity insurance_companies {
+    + id: INT <<PK>>
+    --
+    name: VARCHAR(255) NOT NULL
+    phone: VARCHAR(20) NOT NULL
+    email: VARCHAR(255) NOT NULL
+  }
 
-entity hotels {
-  + hotel_id: INT <<PK>>
-  --
-  name: VARCHAR(255) NOT NULL
-  address: TEXT NOT NULL
-  room_categories: JSON NOT NULL
-  price_range: VARCHAR(100) NOT NULL
-  cancellation_terms: TEXT NOT NULL
-}
-
-entity hotel_interactions {
-  + interaction_id: INT <<PK>>
-  --
-  hotel_id: INT <<FK>> (hotels)
-  interaction_date_utc: DATETIME NOT NULL
-  communication_channel: communication_channels NOT NULL
-  interaction_types: interaction_types NOT NULL
-  summary: TEXT
-  agreements: TEXT
-  next_contact_reminder : reminder_id <<FK>> (hotel_next_contact_reminders)
-}
-
-entity hotel_next_contact_reminders {
-  + reminder_id: INT <<PK>>
-  --
-  hotel_id: INT <<FK>> 
-  preferred_communication_channel: communication_channels NOT NULL
-  message: TEXT NOT NULL
-  send_date: TIMESTAMP NOT NULL
-}
-
-entity promotions {
-  + promo_id: INT <<PK>>
-  --
-  title: VARCHAR(255) NOT NULL
-  content: TEXT NOT NULL
-  promo_type: promotion_types NOT NULL
-  created_at: DATETIME DEFAULT CURRENT_TIMESTAMP
+  entity insurances {
+    + id: INT <<PK>>
+    --
+    tour_id: INT <<FK>> (tours)
+    insurance_company_id: INT <<FK>> NOT NULL
+    coverage_type: insurance_types NOT NULL
+  }
 }
 
 
+package "hotel" {
+  entity hotel_room_categories {
+    + id: INT <<PK>>
+    --
+    hotel_id: INT <<FK>> (hotels)
+    name: VARCHAR(100) NOT NULL
+    price_per_night: DECIMAL(10,2) NOT NULL
+    max_guests: INT NOT NULL
+  }
+
+  entity amenities {
+    + id: INT <<PK>>
+    --
+    name: VARCHAR(255) NOT NULL UNIQUE
+    description: TEXT
+  }
+
+  entity hotels {
+    + id: INT <<PK>>
+    --
+    name: VARCHAR(255) NOT NULL
+    address: TEXT NOT NULL
+    price_range: VARCHAR(100) NOT NULL
+    cancellation_terms: TEXT NOT NULL
+  }
+
+  entity hotel_interactions {
+    + id: INT <<PK>>
+    --
+    hotel_id: INT <<FK>> (hotels)
+    date_utc: DATETIME NOT NULL
+    communication_channel: communication_channels NOT NULL
+    type: interaction_types NOT NULL
+    summary: TEXT
+    agreements: TEXT
+    next_contact_reminder : reminder_id <<FK>> (hotel_next_contact_reminders)
+  }
+
+  entity hotel_next_contact_reminders {
+    + id: INT <<PK>>
+    --
+    hotel_id: INT <<FK>> 
+    preferred_communication_channel: communication_channels NOT NULL
+    message: TEXT NOT NULL
+    send_date: TIMESTAMP NOT NULL
+  }
+}
 
 ' ENUM Definitions
 
@@ -509,17 +528,21 @@ note top of insurances
   - lost_luggage
 end note
 
+note top of passports
+  **passport_types**
+  - internal
+  - foreign
+end note
+
 
 
 ' Relationships
 
 clients||--o{ passports
-clients||--o{ foreign_passports
 clients||--|| cities
 clients||--o{ client_interactions
-clients||--o{ client_bookings
+clients }o--o{ bookings
 clients ||--o{ bans
-client_bookings }o--|| bookings
 client_interactions ||--|| client_next_contact_reminders
 client_personal_notification }o--|| notification_templates
 clients||--o{ client_personal_notification
@@ -534,9 +557,14 @@ tours||--o{ excursions
 tours||--o{ insurances
 tours}o--o{ hotels
 excursions ||--|| route_points
+excursions ||--|| organizers
+transfers ||--|| transport_services
+insurances ||--|| insurance_companies
 
 hotels ||--o{ hotel_interactions
 hotel_interactions ||--|| hotel_next_contact_reminders
+hotels ||--o{ hotel_room_categories
+hotel_room_categories }o--o{ amenities
 
 bookings||--o{ booking_agreements
 assignees ||--o{ contracts
