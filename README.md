@@ -164,7 +164,7 @@ entity clients{
   is_blacklisted: BOOLEAN DEFAULT FALSE
 }
 
-entity client_bans { 
+entity bans { 
   + ban_id: INTEGER <<PK>>
   --
   client_id: INTEGER <<FK>> NOT NULL
@@ -179,7 +179,7 @@ entity cities {
   timezone: VARCHAR(50) NOT NULL
 }
 
-entity client_passports{
+entity passports{
   + passport_id: INTEGER <<PK>>
   --
   client_id: INTEGER <<FK>> (clients)
@@ -188,7 +188,7 @@ entity client_passports{
   issue_date: DATE NOT NULL
 }
 
-entity client_foreign_passports{
+entity foreign_passports{
   + passport_id: INTEGER <<PK>>
   --
   client_id: INTEGER <<FK>> (clients)
@@ -513,11 +513,12 @@ end note
 
 ' Relationships
 
-clients||--o{ client_passports
-clients||--o{ client_foreign_passports
+clients||--o{ passports
+clients||--o{ foreign_passports
 clients||--|| cities
 clients||--o{ client_interactions
 clients||--o{ client_bookings
+clients ||--o{ bans
 client_bookings }o--|| bookings
 client_interactions ||--|| client_next_contact_reminders
 client_personal_notification }o--|| notification_templates
