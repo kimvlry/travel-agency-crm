@@ -1,19 +1,3 @@
-create table clients (
-    id serial primary key,
-    full_name varchar(255) not null,
-    phone varchar(20) not null,
-    email varchar(255) not null,
-    birth_date date not null,
-    city_id varchar(100) not null,
-    is_blacklisted boolean default false
-);
-
-create table bans (
-    id serial primary key,
-    client_id integer references clients(id) on delete cascade,
-    ban_reason text
-);
-
 create table countries (
     id serial primary key,
     name varchar(255) not null
@@ -24,6 +8,22 @@ create table cities (
     name varchar(255) not null,
     country_id integer not null references countries(id) on delete cascade,
     timezone_offset integer not null
+);
+
+create table clients (
+    id serial primary key,
+    full_name varchar(255) not null,
+    phone varchar(20) not null,
+    email varchar(255) not null,
+    birth_date date not null,
+    city_id integer not null references cities(id),
+    is_blacklisted boolean default false
+);
+
+create table bans (
+    id serial primary key,
+    client_id integer references clients(id) on delete cascade,
+    ban_reason text
 );
 
 create table passports (
