@@ -1,4 +1,4 @@
-create type communication_channels as enum (
+create type communication_channel as enum (
     'phone',
     'telegram',
     'whatsapp',
@@ -6,19 +6,19 @@ create type communication_channels as enum (
     'meeting'
 );
 
-create type interaction_types as enum (
+create type interaction_type as enum (
     'discussion',
     'agreement',
     'complaint'
 );
 
-create type promotion_types as enum (
+create type promotion_type as enum (
     'new_tours',
     'last_minute_tour',
     'early_booking'
 );
 
-create type booking_statuses as enum (
+create type booking_status as enum (
     'draft',
     'pending_signature',
     'pending_payment',
@@ -28,13 +28,13 @@ create type booking_statuses as enum (
     'canceled'
 );
 
-create type agreement_consents as enum (
+create type agreement_consent as enum (
     'personal_data',
     'contract_terms',
     'ad'
 );
 
-create type consent_statuses as enum (
+create type consent_status as enum (
     'granted',
     'pending',
     'revoked'
