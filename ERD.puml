@@ -33,7 +33,7 @@ package "client" {
     --
     name: VARCHAR(255) NOT NULL
     country_id: INTEGER NOT NULL <<FK>> (countries)
-    timezone_offsetL INT NOT NULL
+    timezone_offsetL INTEGER NOT NULL
   }
 
   entity passports{
@@ -88,7 +88,7 @@ package "client" {
   }
 
   entity promotions {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
     title: VARCHAR(255) NOT NULL
     content: TEXT NOT NULL
@@ -99,9 +99,9 @@ package "client" {
 
 package "booking and contract" {
   entity bookings{
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    tour_id: INT <<FK>> (tours)
+    tour_id: INTEGER <<FK>> (tours)
     status: booking_status DEFAULT 'draft'
     contract_number: VARCHAR(50) UNIQUE
     payment_links: TEXT
@@ -110,33 +110,33 @@ package "booking and contract" {
   }
 
   entity booking_agreements {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    client_id: INT <<FK>> (clients)
-    booking_id: INT <<FK>> (bookings)
+    client_id: INTEGER <<FK>> (clients)
+    booking_id: INTEGER <<FK>> (bookings)
     signed_date: TIMESTAMPTZ NOT NULL
   }
 
   entity assignees {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    client_id: INT <<FK>> (clients)
+    client_id: INTEGER <<FK>> (clients)
   }
 
   entity contract_templates {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
     name: VARCHAR(100) NOT NULL
     type: VARCHAR(50) NOT NULL
     content: TEXT NOT NULL
-    validity_period_days: INT NOT NULL
+    validity_period_days: INTEGER NOT NULL
   }
 
   entity contracts {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    assignee_id: INT <<FK>> (assignes)
-    template_id: INT <<FK>> (contract_templates)
+    assignee_id: INTEGER <<FK>> (assignes)
+    template_id: INTEGER <<FK>> (contract_templates)
     issue_date: TIMESTAMPTZ NOT NULL
     sign_date: TIMESTAMPTZ
     status: consent_status NOT NULL
@@ -144,17 +144,17 @@ package "booking and contract" {
   }
 
   entity agreement_consents {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    assignee_id: INT <<FK>> (assignees)
-    contract_id: INT <<FK>> (contracts)
+    assignee_id: INTEGER <<FK>> (assignees)
+    contract_id: INTEGER <<FK>> (contracts)
     template_id: INTEGER <<FK>> NOT NULL
     date: DATE NOT NULL
     status: consent_status NOT NULL
   }
 
   entity consent_templates {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
     name: VARCHAR(100) NOT NULL
     type: consent_type NOT NULL
@@ -162,9 +162,9 @@ package "booking and contract" {
   }
 
   entity payment_links {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    booking_id: INT <<FK>> (bookings)
+    booking_id: INTEGER <<FK>> (bookings)
     url: VARCHAR(255) NOT NULL
     qr_code: VARCHAR(255) NOT NULL
     status: VARCHAR(50) NOT NULL
@@ -174,22 +174,22 @@ package "booking and contract" {
 
 package "tour" {
   entity tours{
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
     title: VARCHAR(255) NOT NULL UNIQUE
     price_eur: DECIMAL(10,2) NOT NULL
-    quota: INT NOT NULL
+    quota: INTEGER NOT NULL
     meals_type : meals_type
     is_last_minute: BOOLEAN DEFAULT FALSE
     last_minute_approved: BOOLEAN
-    base_duration_days: INT NOT NULL
+    base_duration_days: INTEGER NOT NULL
   }
 
-  ' Usually toursrun several iterations during the year
+  ' Usually tours run several iterations during the year
   entity tour_iterations { 
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    tour_id: INT <<FK>> (tours)
+    tour_id: INTEGER <<FK>> (tours)
     start_date: DATE NOT NULL
     end_date: DATE NOT NULL
     --
@@ -197,42 +197,42 @@ package "tour" {
   }
 
   entity tour_routes {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    tour_id: INT <<FK>> (tours)
+    tour_id: INTEGER <<FK>> (tours)
   }
 
   entity route_points {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    route_id: INT <<FK>> (tour_routes)
+    route_id: INTEGER <<FK>> (tour_routes)
     city_id: INTEGER <<FK>> (route_points)
     name: VARCHAR(255) NOT NULL
     address: TEXT NOT NULL
     duration_time : INTERVAL
     route_id: INTEGER NOT NULL <<FK>> (tour_routes)
-    in_route_order_position: INT NOT NULL
+    in_route_order_position: INTEGER NOT NULL
   }
 
   entity transport_services {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
     company: VARCHAR(255) NOT NULL
     model: VARCHAR(255)
   }
 
   entity transfers {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    tour_id: INT <<FK>> (tours)
-    transport_id: INT <<FK>> (transport_services)
+    tour_id: INTEGER <<FK>> (tours)
+    transport_id: INTEGER <<FK>> (transport_services)
     departure_point: point_id NOT NULL <<FK>> (route_points)
     arrival_point: point_id NOT NULL <<FK>> (route_points)
     departure_time: TIMESTAMPTZ NOT NULL
   }
 
   entity organizers {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
     name: VARCHAR(255) NOT NULL
     phone: VARCHAR(20) NOT NULL
@@ -240,17 +240,17 @@ package "tour" {
   }
 
   entity excursions {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    tour_id: INT <<FK>> (tours)
-    organizer_id: INT <<FK>> NOT NULL
+    tour_id: INTEGER <<FK>> (tours)
+    organizer_id: INTEGER <<FK>> NOT NULL
     name: VARCHAR(255) NOT NULL
     meeting_location : point_id NOT NULL <<FK>> (route_points)
     meeting_time: TIMESTAMPTZ NOT NULL
   }
 
   entity insurance_companies {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
     name: VARCHAR(255) NOT NULL
     phone: VARCHAR(20) NOT NULL
@@ -258,10 +258,10 @@ package "tour" {
   }
 
   entity insurances {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    tour_id: INT <<FK>> (tours)
-    insurance_company_id: INT <<FK>> NOT NULL
+    tour_id: INTEGER <<FK>> (tours)
+    insurance_company_id: INTEGER <<FK>> NOT NULL
     coverage_type: insurance_type NOT NULL
   }
 }
@@ -269,23 +269,23 @@ package "tour" {
 
 package "hotel" {
   entity hotel_room_categories {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    hotel_id: INT <<FK>> (hotels)
+    hotel_id: INTEGER <<FK>> (hotels)
     name: VARCHAR(100) NOT NULL
     price_per_night: DECIMAL(10,2) NOT NULL
-    max_guests: INT NOT NULL
+    max_guests: INTEGER NOT NULL
   }
 
   entity amenities {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
     name: VARCHAR(255) NOT NULL UNIQUE
     description: TEXT
   }
 
   entity hotels {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
     name: VARCHAR(255) NOT NULL
     address: TEXT NOT NULL
@@ -294,9 +294,9 @@ package "hotel" {
   }
 
   entity hotel_interactions {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    hotel_id: INT <<FK>> (hotels)
+    hotel_id: INTEGER <<FK>> (hotels)
     date_utc: DATETIME NOT NULL
     communication_channel: communication_channel NOT NULL
     type: interaction_type NOT NULL
@@ -306,9 +306,9 @@ package "hotel" {
   }
 
   entity hotel_next_contact_reminders {
-    + id: INT <<PK>>
+    + id: INTEGER <<PK>>
     --
-    hotel_id: INT <<FK>> 
+    hotel_id: INTEGER <<FK>>
     preferred_communication_channel: communication_channel NOT NULL
     message: TEXT NOT NULL
     send_date: TIMESTAMPTZ NOT NULL
