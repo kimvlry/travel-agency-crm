@@ -63,7 +63,7 @@ create table notification_templates (
     promo_id integer
 );
 
-create table client_personal_notification (
+create table client_personal_notifications (
     id serial primary key,
     client_id integer references clients(id) on delete cascade,
     preferred_communication_channel communication_channel not null,
