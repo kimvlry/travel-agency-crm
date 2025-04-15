@@ -33,7 +33,7 @@ package "client" {
     + id: INTEGER <<PK>>
     --
     client_id: INTEGER <<FK>> (clients)
-    type: passport_types NOT NULL
+    type: passport_type NOT NULL
     number: VARCHAR(50) NOT NULL
     expiration_date: DATE NOT NULL
     issue_date: DATE NOT NULL
@@ -46,9 +46,9 @@ package "client" {
     --
     client_id: INTEGER <<FK>> (clients)
     date_utc: TIMESTAMP NOT NULL
-    communication_channel: communication_channels NOT NULL
+    communication_channel: communication_channel NOT NULL
     meeting_location: VARCHAR(255)
-    type: interaction_types NOT NULL
+    type: interaction_type NOT NULL
     summary: TEXT
     agreements: TEXT
     reminder_id: INTEGER <<FK>> (client_next_contact_reminders)
@@ -58,7 +58,7 @@ package "client" {
     + id: INTEGER <<PK>>
     --
     client_id: INTEGER <<FK>> (clients)
-    preferred_communication_channel: communication_channels NOT NULL
+    preferred_communication_channel: communication_channel NOT NULL
     message: TEXT NOT NULL
     send_date: TIMESTAMP NOT NULL
   }
@@ -67,7 +67,7 @@ package "client" {
     + id: INTEGER <<PK>>
     --
     client_id: INTEGER <<FK>> (clients)
-    preferred_communication_channel: communication_channels NOT NULL
+    preferred_communication_channel: communication_channel NOT NULL
     template_id: INTEGER <<FK>> (notification_templates)
     send_date: TIMESTAMP NOT NULL
   }
@@ -75,7 +75,7 @@ package "client" {
   entity notification_templates {
     + id: INTEGER <<PK>>
     --
-    type: notification_types NOT NULL
+    type: notification_type NOT NULL
     message_template: TEXT
     promo_id: INTEGER 
   }
@@ -85,7 +85,7 @@ package "client" {
     --
     title: VARCHAR(255) NOT NULL
     content: TEXT NOT NULL
-    promo_type: promotion_types NOT NULL
+    promo_type: promotion_type NOT NULL
     created_at: DATETIME DEFAULT CURRENT_TIMESTAMP
   }
 }
@@ -95,7 +95,7 @@ package "booking and contract" {
     + id: INT <<PK>>
     --
     tour_id: INT <<FK>> (tours)
-    status: booking_statuses DEFAULT 'draft'
+    status: booking_status DEFAULT 'draft'
     contract_number: VARCHAR(50) UNIQUE
     payment_links: TEXT
     created_at: DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -132,7 +132,7 @@ package "booking and contract" {
     template_id: INT <<FK>> (contract_templates)
     issue_date: TIMESTAMP NOT NULL
     sign_date: TIMESTAMP
-    status: consent_statuses NOT NULL
+    status: consent_status NOT NULL
     total_price: DECIMAL(10,2) NOT NULL
   }
 
@@ -143,14 +143,14 @@ package "booking and contract" {
     contract_id: INT <<FK>> (contracts)
     template_id: INTEGER <<FK>> NOT NULL
     date: TIMESTAMP NOT NULL
-    status: consent_statuses NOT NULL
+    status: consent_status NOT NULL
   }
 
   entity consent_templates {
     + id: INT <<PK>>
     --
     name: VARCHAR(100) NOT NULL
-    type: consent_types NOT NULL 
+    type: consent_type NOT NULL
     content: TEXT NOT NULL
   }
 
@@ -172,7 +172,7 @@ package "tour" {
     title: VARCHAR(255) NOT NULL UNIQUE
     price_eur: DECIMAL(10,2) NOT NULL
     quota: INT NOT NULL
-    meals_type : meals_types
+    meals_type : meals_type
     is_last_minute: BOOLEAN DEFAULT FALSE
     last_minute_approved: BOOLEAN
     base_duration_days: INT NOT NULL
@@ -253,7 +253,7 @@ package "tour" {
     --
     tour_id: INT <<FK>> (tours)
     insurance_company_id: INT <<FK>> NOT NULL
-    coverage_type: insurance_types NOT NULL
+    coverage_type: insurance_type NOT NULL
   }
 }
 
@@ -289,8 +289,8 @@ package "hotel" {
     --
     hotel_id: INT <<FK>> (hotels)
     date_utc: DATETIME NOT NULL
-    communication_channel: communication_channels NOT NULL
-    type: interaction_types NOT NULL
+    communication_channel: communication_channel NOT NULL
+    type: interaction_type NOT NULL
     summary: TEXT
     agreements: TEXT
     next_contact_reminder : reminder_id <<FK>> (hotel_next_contact_reminders)
@@ -300,7 +300,7 @@ package "hotel" {
     + id: INT <<PK>>
     --
     hotel_id: INT <<FK>> 
-    preferred_communication_channel: communication_channels NOT NULL
+    preferred_communication_channel: communication_channel NOT NULL
     message: TEXT NOT NULL
     send_date: TIMESTAMP NOT NULL
   }
@@ -309,28 +309,28 @@ package "hotel" {
 ' ENUM Definitions
 
 note right of client_interactions
-  **communication_channels**:
+  **communication_channel**:
   - phone
   - telegram
   - whatsapp
   - email
   - meeting
   
-  **interaction_types**:
+  **interaction_type**:
   - discussion
   - agreement
   - complaint
 end note
 
 note right of promotions
-  **promotion_types**
+  **promotion_type**
   - new_tours
   - last_minute_tour
   - early_booking
 end note
 
 note right of bookings
-  **booking_statuses**:
+  **booking_status**:
   - draft
   - pending_signature
   - pending_payment
@@ -341,33 +341,33 @@ note right of bookings
 end note
 
 note right of agreement_consents
-  **consent_types**:
+  **consent_type**:
   - personal_data
   - contract_terms
   - ad
   
-  **consent_statuses**:
+  **consent_status**:
   - granted
   - pending
   - revoked
 end note
 
 note right of hotel_interactions
-  **interaction_types**:
+  **interaction_type**:
   - discussion
   - agreement
   - claim
 end note
 
 note right of tours
-  **meals_types**
+  **meals_type**
   - breakfast
   - half_board
   - full_board
 end note
 
 note right of notification_templates
-  **notification_types**:
+  **notification_type**:
   - passport_expiry
   - flight_reminder
   - payment_reminder
@@ -375,13 +375,13 @@ note right of notification_templates
 end note
 
 note right of insurances
-  **insurance_types**
+  **insurance_type**
   - medical
   - lost_luggage
 end note
 
 note right of passports
-  **passport_types**
+  **passport_type**
   - internal
   - foreign
 end note
