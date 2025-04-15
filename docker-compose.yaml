@@ -17,6 +17,8 @@ services:
     container_name: flyway_migrations
     depends_on:
       - postgres
+    environment:
+      - MIGRATION_VERSION=${MIGRATION_VERSION:-latest}
     command: >
       -url=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       -user=${POSTGRES_USER}
@@ -24,6 +26,7 @@ services:
       -connectRetries=10
       -locations=filesystem:/flyway/sql
       -baselineOnMigrate=true
+      -target=${MIGRATION_VERSION}
       migrate
     volumes:
       - ./flyway/sql:/flyway/sql
