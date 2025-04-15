@@ -28,7 +28,7 @@ create type booking_status as enum (
     'canceled'
 );
 
-create type agreement_consent as enum (
+create type agreement_consent_type as enum (
     'personal_data',
     'contract_terms',
     'ad'
@@ -38,12 +38,6 @@ create type consent_status as enum (
     'granted',
     'pending',
     'revoked'
-);
-
-create type interaction_type as enum (
-  'discussion',
-  'agreement',
-  'claim'
 );
 
 create type meals_type as enum (
