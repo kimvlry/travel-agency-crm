@@ -21,12 +21,19 @@ package "client" {
     ban_reason: TEXT 
   }
 
+  entity countries {
+    + id: INTEGER <<PK>>
+    --
+    name: VARCHAR(255) NOT NULL
+
+  }
+
   entity cities {
     + id: INTEGER <<PK>>
     --
     name: VARCHAR(255) NOT NULL
-    country_name: VARCHAR(a55) NOT NULL
-    timezone: VARCHAR(50) NOT NULL
+    country_id: INTEGER NOT NULL <<FK>> (countries)
+    timezone_offsetL INT NOT NULL
   }
 
   entity passports{
@@ -45,7 +52,7 @@ package "client" {
     + id: INTEGER <<PK>>
     --
     client_id: INTEGER <<FK>> (clients)
-    date_utc: TIMESTAMP NOT NULL
+    time: TIMESTAMPTZ NOT NULL
     communication_channel: communication_channel NOT NULL
     meeting_location: VARCHAR(255)
     type: interaction_type NOT NULL
@@ -60,7 +67,7 @@ package "client" {
     client_id: INTEGER <<FK>> (clients)
     preferred_communication_channel: communication_channel NOT NULL
     message: TEXT NOT NULL
-    send_date: TIMESTAMP NOT NULL
+    send_time: TIMESTAMPTZ NOT NULL
   }
 
   entity client_personal_notification {
@@ -69,7 +76,7 @@ package "client" {
     client_id: INTEGER <<FK>> (clients)
     preferred_communication_channel: communication_channel NOT NULL
     template_id: INTEGER <<FK>> (notification_templates)
-    send_date: TIMESTAMP NOT NULL
+    send_time: TIMESTAMPTZ NOT NULL
   }
 
   entity notification_templates {
@@ -86,7 +93,7 @@ package "client" {
     title: VARCHAR(255) NOT NULL
     content: TEXT NOT NULL
     promo_type: promotion_type NOT NULL
-    created_at: DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
   }
 }
 
@@ -98,8 +105,8 @@ package "booking and contract" {
     status: booking_status DEFAULT 'draft'
     contract_number: VARCHAR(50) UNIQUE
     payment_links: TEXT
-    created_at: DATETIME DEFAULT CURRENT_TIMESTAMP
-    updated_at: DATETIME ON UPDATE CURRENT_TIMESTAMP
+    created_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    updated_at: TIMESTAMPTZ ON UPDATE CURRENT_TIMESTAMP
   }
 
   entity booking_agreements {
@@ -107,7 +114,7 @@ package "booking and contract" {
     --
     client_id: INT <<FK>> (clients)
     booking_id: INT <<FK>> (bookings)
-    signed_date: TIMESTAMP NOT NULL
+    signed_date: TIMESTAMPTZ NOT NULL
   }
 
   entity assignees {
@@ -130,8 +137,8 @@ package "booking and contract" {
     --
     assignee_id: INT <<FK>> (assignes)
     template_id: INT <<FK>> (contract_templates)
-    issue_date: TIMESTAMP NOT NULL
-    sign_date: TIMESTAMP
+    issue_date: TIMESTAMPTZ NOT NULL
+    sign_date: TIMESTAMPTZ
     status: consent_status NOT NULL
     total_price: DECIMAL(10,2) NOT NULL
   }
@@ -142,7 +149,7 @@ package "booking and contract" {
     assignee_id: INT <<FK>> (assignees)
     contract_id: INT <<FK>> (contracts)
     template_id: INTEGER <<FK>> NOT NULL
-    date: TIMESTAMP NOT NULL
+    date: DATE NOT NULL
     status: consent_status NOT NULL
   }
 
@@ -193,15 +200,18 @@ package "tour" {
     + id: INT <<PK>>
     --
     tour_id: INT <<FK>> (tours)
-    order_position: INT NOT NULL
   }
 
   entity route_points {
     + id: INT <<PK>>
     --
     route_id: INT <<FK>> (tour_routes)
+    city_id: INTEGER <<FK>> (route_points)
     name: VARCHAR(255) NOT NULL
     address: TEXT NOT NULL
+    duration_time : INTERVAL
+    route_id: INTEGER NOT NULL <<FK>> (tour_routes)
+    in_route_order_position: INT NOT NULL
   }
 
   entity transport_services {
@@ -218,8 +228,7 @@ package "tour" {
     transport_id: INT <<FK>> (transport_services)
     departure_point: point_id NOT NULL <<FK>> (route_points)
     arrival_point: point_id NOT NULL <<FK>> (route_points)
-    departure_time: DATETIME NOT NULL
-    duration_time : INTERVAL NOT NULL
+    departure_time: TIMESTAMPTZ NOT NULL
   }
 
   entity organizers {
@@ -236,8 +245,8 @@ package "tour" {
     tour_id: INT <<FK>> (tours)
     organizer_id: INT <<FK>> NOT NULL
     name: VARCHAR(255) NOT NULL
-    meeting_location : point_id NOT NULL
-    duration_time : INTERVAL
+    meeting_location : point_id NOT NULL <<FK>> (route_points)
+    meeting_time: TIMESTAMPTZ NOT NULL
   }
 
   entity insurance_companies {
@@ -302,7 +311,7 @@ package "hotel" {
     hotel_id: INT <<FK>> 
     preferred_communication_channel: communication_channel NOT NULL
     message: TEXT NOT NULL
-    send_date: TIMESTAMP NOT NULL
+    send_date: TIMESTAMPTZ NOT NULL
   }
 }
 
@@ -400,7 +409,10 @@ client_personal_notification }o--|| notification_templates
 clients||--o{ client_personal_notification
 notification_templates ||--|| promotions
 
+countries||--||cities
+
 bookings||--|| tours
+route_points||--||cities
 tours||--o{ tour_routes
 tours||--o{ tour_iterations
 tour_routes ||--o{ route_points
