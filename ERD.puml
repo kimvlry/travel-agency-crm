@@ -173,8 +173,8 @@ package "tour" {
     price_eur: DECIMAL(10,2) NOT NULL
     quota: INT NOT NULL
     meals_type : meals_types
-    is_lastminute: BOOLEAN DEFAULT FALSE 
-    lastminute_approved: BOOLEAN
+    is_last_minute: BOOLEAN DEFAULT FALSE
+    last_minute_approved: BOOLEAN
     base_duration_days: INT NOT NULL
   }
 
@@ -325,7 +325,7 @@ end note
 note right of promotions
   **promotion_types**
   - new_tours
-  - hot_tours
+  - last_minute_tour
   - early_booking
 end note
 
