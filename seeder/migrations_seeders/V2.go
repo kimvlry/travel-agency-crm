@@ -72,11 +72,14 @@ func (s *V2Seeder) seedClients() {
 		}
 
 		client := Client{
-			FullName:  gofakeit.Name(),
-			Phone:     gofakeit.Phone(),
-			Email:     gofakeit.Email(),
-			BirthDate: gofakeit.DateRange(time.Now().AddDate(-60, 0, 0), time.Now().AddDate(-18, 0, 0)),
-			CityID:    cities[gofakeit.Number(0, len(cities)-1)].ID,
+			FullName: gofakeit.Name(),
+			Phone:    gofakeit.Phone(),
+			Email:    gofakeit.Email(),
+			BirthDate: gofakeit.
+				DateRange(
+					time.Now().AddDate(-60, 0, 0),
+					time.Now().AddDate(-18, 0, 0)),
+			CityID: cities[gofakeit.Number(0, len(cities)-1)].ID,
 		}
 		if err := s.db.Create(&client).Error; err != nil {
 			log.Println("error seeding client: ", err)
@@ -110,7 +113,10 @@ func (s *V2Seeder) seedBans() {
 			if err := tx.Create(&ban).Error; err != nil {
 				return err
 			}
-			if err := tx.Model(&Client{}).Where("id = ?", client.ID).Update("is_blacklisted", true).Error; err != nil {
+			if err := tx.
+				Model(&Client{}).
+				Where("id = ?", client.ID).
+				Update("is_blacklisted", true).Error; err != nil {
 				return err
 			}
 			return nil
@@ -146,11 +152,17 @@ func (s *V2Seeder) seedPassports() {
 	for _, client := range clients {
 		for _, passportType := range PassportTypes {
 			passport := Passport{
-				ClientID:       client.ID,
-				Type:           passportType,
-				Number:         gofakeit.UUID(),
-				ExpirationDate: gofakeit.DateRange(time.Now().AddDate(5, 0, 0), time.Now().AddDate(10, 0, 0)),
-				IssueDate:      gofakeit.DateRange(time.Now().AddDate(-10, 0, 0), time.Now().AddDate(-1, 0, 0)),
+				ClientID: client.ID,
+				Type:     passportType,
+				Number:   gofakeit.UUID(),
+				ExpirationDate: gofakeit.
+					DateRange(
+						time.Now().AddDate(5, 0, 0),
+						time.Now().AddDate(10, 0, 0)),
+				IssueDate: gofakeit.
+					DateRange(
+						time.Now().AddDate(-10, 0, 0),
+						time.Now().AddDate(-1, 0, 0)),
 			}
 			passports = append(passports, passport)
 		}
@@ -183,7 +195,10 @@ func (s *V2Seeder) seedClientNextContactReminders() {
 			ClientID:                      getRandomFromSlice(clients).ID,
 			PreferredCommunicationChannel: getRandomFromSlice(CommunicationChannels),
 			Message:                       gofakeit.Sentence(6),
-			SendTime:                      gofakeit.DateRange(time.Now(), time.Now().AddDate(0, 1, 0)),
+			SendTime: gofakeit.
+				DateRange(
+					time.Now(),
+					time.Now().AddDate(0, 1, 0)),
 		}
 		if err := s.db.Create(&reminder).Error; err != nil {
 			log.Println("error seeding contact reminder:", err)
@@ -217,8 +232,11 @@ func (s *V2Seeder) seedClientInteractions() {
 
 	for i := 0; i < s.count; i++ {
 		interaction := ClientInteraction{
-			ClientID:             getRandomFromSlice(clients).ID,
-			Time:                 gofakeit.DateRange(time.Now().AddDate(-1, 0, 0), time.Now()),
+			ClientID: getRandomFromSlice(clients).ID,
+			Time: gofakeit.
+				DateRange(
+					time.Now().AddDate(-1, 0, 0),
+					time.Now()),
 			CommunicationChannel: getRandomFromSlice(CommunicationChannels),
 			MeetingLocation:      gofakeit.Address().City,
 			Type:                 getRandomFromSlice(InteractionTypes),
@@ -287,7 +305,10 @@ func (s *V2Seeder) seedClientPersonalNotifications() {
 		notif := ClientPersonalNotification{
 			ClientID:                      getRandomFromSlice(clients).ID,
 			PreferredCommunicationChannel: getRandomFromSlice(CommunicationChannels),
-			SendTime:                      gofakeit.DateRange(time.Now(), time.Now().AddDate(0, 1, 0)),
+			SendTime: gofakeit.
+				DateRange(
+					time.Now(),
+					time.Now().AddDate(0, 1, 0)),
 		}
 
 		if len(templates) > 0 && gofakeit.Bool() {

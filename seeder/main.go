@@ -19,7 +19,9 @@ func connectToDb() *gorm.DB {
 		log.Fatal("environment variables not set")
 	}
 
-	connectionString := fmt.Sprintf("user=%s password=%s dbname=%s host=postgres port=5432 sslmode=disable", dbUser, dbPassword, dbName)
+	connectionString := fmt.
+		Sprintf("user=%s password=%s dbname=%s host=postgres port=5432 sslmode=disable",
+			dbUser, dbPassword, dbName)
 	db, err := gorm.Open(postgres.Open(connectionString), &gorm.Config{})
 	if err != nil {
 		log.Fatal("couldn't connect to db", err)
