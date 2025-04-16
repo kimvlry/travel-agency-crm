@@ -16,13 +16,6 @@ func (s *V6Seeder) SeedAnalysts() error {
 	}
 	names := strings.Split(analystNames, ",")
 
-	tx := s.db.Begin()
-	if tx.Error != nil {
-		log.Printf("failed to start transaction: %v\n", tx.Error)
-		return fmt.Errorf("failed to start transaction: %w", tx.Error)
-	}
-	defer tx.Rollback()
-
 	for _, name := range names {
 		password := fmt.Sprintf("%s_123", name)
 
@@ -36,24 +29,19 @@ func (s *V6Seeder) SeedAnalysts() error {
             $$;
         `, name, name, password)
 
-		err := tx.Exec(query).Error
+		err := s.db.Exec(query).Error
 		if err != nil {
 			log.Printf("failed to create user %s: %v\n", name, err)
 			return fmt.Errorf("failed to create user %s: %w", name, err)
 		}
 
-		err = tx.Exec(fmt.Sprintf(`
+		err = s.db.Exec(fmt.Sprintf(`
             GRANT analytic TO "%s";
         `, name)).Error
 		if err != nil {
 			log.Printf("failed to grant role 'analytic' to user %s: %v\n", name, err)
 			return fmt.Errorf("failed to grant role 'analytic' to user %s: %w", name, err)
 		}
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		log.Printf("failed to commit transaction: %v\n", err)
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	log.Println("successfully seeded analysts")

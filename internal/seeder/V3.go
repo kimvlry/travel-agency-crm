@@ -21,9 +21,10 @@ type Tour struct {
 
 func (s *V3Seeder) seedTours() error {
 	for i := 0; i < s.count; i++ {
+
 		approved := gofakeit.Bool()
 		tour := Tour{
-			Title:              gofakeit.Country() + " tour",
+			Title:              gofakeit.Country() + gofakeit.UUID(),
 			PriceEUR:           gofakeit.Price(100, 10000),
 			Quota:              gofakeit.Number(10, 100),
 			MealsType:          getRandomFromSlice(MealsTypes),
