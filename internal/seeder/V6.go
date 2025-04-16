@@ -8,18 +8,18 @@ import (
 	"strings"
 )
 
-func (s *V6Seeder) SeedAnalysts() {
+func (s *V6Seeder) SeedAnalysts() error {
 	analystNames := os.Getenv("ANALYST_NAMES")
 	if analystNames == "" {
 		log.Println("ANALYST_NAMES environment variable is not set")
-		return
+		return fmt.Errorf("ANALYST_NAMES environment variable is not set")
 	}
 	names := strings.Split(analystNames, ",")
 
 	tx := s.db.Begin()
 	if tx.Error != nil {
 		log.Printf("failed to start transaction: %v\n", tx.Error)
-		return
+		return fmt.Errorf("failed to start transaction: %w", tx.Error)
 	}
 	defer tx.Rollback()
 
@@ -39,7 +39,7 @@ func (s *V6Seeder) SeedAnalysts() {
 		err := tx.Exec(query).Error
 		if err != nil {
 			log.Printf("failed to create user %s: %v\n", name, err)
-			return
+			return fmt.Errorf("failed to create user %s: %w", name, err)
 		}
 
 		err = tx.Exec(fmt.Sprintf(`
@@ -47,16 +47,17 @@ func (s *V6Seeder) SeedAnalysts() {
         `, name)).Error
 		if err != nil {
 			log.Printf("failed to grant role 'analytic' to user %s: %v\n", name, err)
-			return
+			return fmt.Errorf("failed to grant role 'analytic' to user %s: %w", name, err)
 		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
 		log.Printf("failed to commit transaction: %v\n", err)
-		return
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	log.Println("successfully seeded analysts")
+	return nil
 }
 
 type V6Seeder struct {
@@ -69,6 +70,9 @@ func NewV6Seeder(db *gorm.DB) *V6Seeder {
 	}
 }
 
-func (s *V6Seeder) Seed() {
-	s.SeedAnalysts()
+func (s *V6Seeder) Seed() error {
+	if err := s.SeedAnalysts(); err != nil {
+		return err
+	}
+	return nil
 }

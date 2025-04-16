@@ -1,9 +1,9 @@
 package seeder
 
 import (
+	"fmt"
 	"github.com/brianvoe/gofakeit/v7"
 	"gorm.io/gorm"
-	"log"
 	"time"
 )
 
@@ -14,7 +14,7 @@ type Hotel struct {
 	CancellationTerms string `gorm:"not null"`
 }
 
-func (s *V5Seeder) seedHotels() {
+func (s *V5Seeder) seedHotels() error {
 	for i := 0; i < s.count; i++ {
 		hotel := Hotel{
 			Name:              gofakeit.Company(),
@@ -22,9 +22,10 @@ func (s *V5Seeder) seedHotels() {
 			CancellationTerms: gofakeit.Paragraph(1, 2, 5, " "),
 		}
 		if err := s.db.Create(&hotel).Error; err != nil {
-			log.Println("error seeding hotel:", err)
+			return fmt.Errorf("error seeding hotel: %w", err)
 		}
 	}
+	return nil
 }
 
 type HotelRoomCategory struct {
@@ -35,13 +36,13 @@ type HotelRoomCategory struct {
 	MaxGuests     int     `gorm:"not null"`
 }
 
-func (s *V5Seeder) seedHotelRoomCategories() {
+func (s *V5Seeder) seedHotelRoomCategories() error {
 	var hotels []Hotel
 	s.db.Find(&hotels)
 
 	for i := 0; i < s.count; i++ {
 		if len(hotels) == 0 {
-			log.Fatal("no hotels found, cannot seed hotel room categories")
+			return fmt.Errorf("no hotels found, cannot seed hotel room categories")
 		}
 		category := HotelRoomCategory{
 			HotelID:       getRandomFromSlice(hotels).ID,
@@ -50,9 +51,10 @@ func (s *V5Seeder) seedHotelRoomCategories() {
 			MaxGuests:     gofakeit.Number(1, 5),
 		}
 		if err := s.db.Create(&category).Error; err != nil {
-			log.Println("error seeding hotel room category:", err)
+			return fmt.Errorf("error seeding hotel room category: %w", err)
 		}
 	}
+	return nil
 }
 
 type Amenity struct {
@@ -61,16 +63,17 @@ type Amenity struct {
 	Description string
 }
 
-func (s *V5Seeder) seedAmenities() {
+func (s *V5Seeder) seedAmenities() error {
 	for i := 0; i < s.count; i++ {
 		amenity := Amenity{
 			Name:        gofakeit.Word(),
 			Description: gofakeit.Paragraph(1, 2, 5, " "),
 		}
 		if err := s.db.Create(&amenity).Error; err != nil {
-			log.Println("error seeding amenity:", err)
+			return fmt.Errorf("error seeding amenity: %w", err)
 		}
 	}
+	return nil
 }
 
 type HotelNextContactReminder struct {
@@ -81,13 +84,13 @@ type HotelNextContactReminder struct {
 	SendDate                      time.Time `gorm:"not null"`
 }
 
-func (s *V5Seeder) seedHotelNextContactReminders() {
+func (s *V5Seeder) seedHotelNextContactReminders() error {
 	var hotels []Hotel
 	s.db.Find(&hotels)
 
 	for i := 0; i < s.count; i++ {
 		if len(hotels) == 0 {
-			log.Fatal("no hotels found, cannot seed hotel next contact reminders")
+			return fmt.Errorf("no hotels found, cannot seed hotel next contact reminders")
 		}
 		reminder := HotelNextContactReminder{
 			HotelID:                       getRandomFromSlice(hotels).ID,
@@ -96,9 +99,10 @@ func (s *V5Seeder) seedHotelNextContactReminders() {
 			SendDate:                      gofakeit.Date(),
 		}
 		if err := s.db.Create(&reminder).Error; err != nil {
-			log.Println("error seeding hotel next contact reminder:", err)
+			return fmt.Errorf("error seeding hotel next contact reminder: %w", err)
 		}
 	}
+	return nil
 }
 
 type HotelInteraction struct {
@@ -112,7 +116,7 @@ type HotelInteraction struct {
 	NextContactReminderID *uint
 }
 
-func (s *V5Seeder) seedHotelInteractions() {
+func (s *V5Seeder) seedHotelInteractions() error {
 	var hotels []Hotel
 	var reminders []HotelNextContactReminder
 	s.db.Find(&hotels)
@@ -120,7 +124,7 @@ func (s *V5Seeder) seedHotelInteractions() {
 
 	for i := 0; i < s.count; i++ {
 		if len(hotels) == 0 {
-			log.Fatal("no hotels found, cannot seed hotel interactions")
+			return fmt.Errorf("no hotels found, cannot seed hotel interactions")
 		}
 
 		var nextContactReminderID *uint
@@ -139,9 +143,10 @@ func (s *V5Seeder) seedHotelInteractions() {
 			NextContactReminderID: nextContactReminderID,
 		}
 		if err := s.db.Create(&interaction).Error; err != nil {
-			log.Println("error seeding hotel interaction:", err)
+			return fmt.Errorf("error seeding hotel interaction: %w", err)
 		}
 	}
+	return nil
 }
 
 type V5Seeder struct {
@@ -149,17 +154,28 @@ type V5Seeder struct {
 	count int
 }
 
-func NewV5Seeder(db *gorm.DB, count int) *V3Seeder {
-	return &V3Seeder{
+func NewV5Seeder(db *gorm.DB, count int) *V5Seeder {
+	return &V5Seeder{
 		db:    db,
 		count: count,
 	}
 }
 
-func (s *V5Seeder) Seed() {
-	s.seedHotels()
-	s.seedHotelRoomCategories()
-	s.seedAmenities()
-	s.seedHotelNextContactReminders()
-	s.seedHotelInteractions()
+func (s *V5Seeder) Seed() error {
+	if err := s.seedHotels(); err != nil {
+		return err
+	}
+	if err := s.seedHotelRoomCategories(); err != nil {
+		return err
+	}
+	if err := s.seedAmenities(); err != nil {
+		return err
+	}
+	if err := s.seedHotelNextContactReminders(); err != nil {
+		return err
+	}
+	if err := s.seedHotelInteractions(); err != nil {
+		return err
+	}
+	return nil
 }

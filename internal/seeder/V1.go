@@ -1,9 +1,11 @@
 package seeder
 
-type V1Seeder struct{}
+type V1DummySeeder struct{}
 
-func NewV1Seeder() *V1Seeder {
-	return &V1Seeder{}
+func NewV1Seeder() *V1DummySeeder {
+	return &V1DummySeeder{}
 }
 
-func (s *V1Seeder) Seed() {}
+func (s *V1DummySeeder) Seed() error {
+	return nil
+}

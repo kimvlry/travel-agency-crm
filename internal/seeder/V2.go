@@ -1,6 +1,7 @@
 package seeder
 
 import (
+	"fmt"
 	"github.com/brianvoe/gofakeit/v7"
 	"gorm.io/gorm"
 	"log"
@@ -12,15 +13,16 @@ type Country struct {
 	Name string `gorm:"not null"`
 }
 
-func (s *V2Seeder) seedCountries() {
+func (s *V2Seeder) seedCountries() error {
 	for i := 0; i < s.count; i++ {
 		country := Country{
 			Name: gofakeit.Country(),
 		}
 		if err := s.db.Create(&country).Error; err != nil {
-			log.Println("error seeding country: ", err)
+			return fmt.Errorf("error seeding country: %w", err)
 		}
 	}
+	return nil
 }
 
 type City struct {
@@ -31,13 +33,13 @@ type City struct {
 	TimezoneOffset int     `gorm:"not null"`
 }
 
-func (s *V2Seeder) seedCities() {
+func (s *V2Seeder) seedCities() error {
 	var countries []Country
 	s.db.Find(&countries)
 
 	for i := 0; i < s.count; i++ {
 		if len(countries) == 0 {
-			log.Fatal("no countries found, cannot seed cities")
+			return fmt.Errorf("no countries found, cannot seed cities")
 		}
 
 		city := City{
@@ -46,9 +48,10 @@ func (s *V2Seeder) seedCities() {
 			TimezoneOffset: gofakeit.Number(-12, 12),
 		}
 		if err := s.db.Create(&city).Error; err != nil {
-			log.Println("error seeding city: ", err)
+			return fmt.Errorf("error seeding city: %w", err)
 		}
 	}
+	return nil
 }
 
 type Client struct {
@@ -62,13 +65,13 @@ type Client struct {
 	IsBlacklisted bool      `gorm:"default:false"`
 }
 
-func (s *V2Seeder) seedClients() {
+func (s *V2Seeder) seedClients() error {
 	var cities []City
 	s.db.Find(&cities)
 
 	for i := 0; i < s.count; i++ {
 		if len(cities) == 0 {
-			log.Fatal("no cities found, cannot seed clients")
+			return fmt.Errorf("no cities found, cannot seed clients")
 		}
 
 		client := Client{
@@ -82,9 +85,10 @@ func (s *V2Seeder) seedClients() {
 			CityID: cities[gofakeit.Number(0, len(cities)-1)].ID,
 		}
 		if err := s.db.Create(&client).Error; err != nil {
-			log.Println("error seeding client: ", err)
+			return fmt.Errorf("error seeding client: %w", err)
 		}
 	}
+	return nil
 }
 
 type Ban struct {
@@ -94,12 +98,12 @@ type Ban struct {
 	BanReason string
 }
 
-func (s *V2Seeder) seedBans() {
+func (s *V2Seeder) seedBans() error {
 	var clients []Client
 	s.db.Find(&clients)
 
 	if len(clients) == 0 {
-		log.Fatal("no clients found, cannot seed bans")
+		return fmt.Errorf("no clients found, cannot seed bans")
 	}
 
 	for i := 0; i < s.count; i++ {
@@ -124,8 +128,10 @@ func (s *V2Seeder) seedBans() {
 
 		if err != nil {
 			log.Println("error in transaction seeding ban and updating client: ", err)
+			return err
 		}
 	}
+	return nil
 }
 
 type Passport struct {
@@ -138,14 +144,14 @@ type Passport struct {
 	IssueDate      time.Time `gorm:"not null"`
 }
 
-func (s *V2Seeder) seedPassports() {
+func (s *V2Seeder) seedPassports() error {
 	var clients []Client
 	if err := s.db.Find(&clients).Error; err != nil {
-		log.Fatalf("failed to fetch clients: %v", err)
+		return fmt.Errorf("failed to fetch clients: %w", err)
 	}
 
 	if len(clients) == 0 {
-		log.Fatal("no clients found, cannot seed passports")
+		return fmt.Errorf("no clients found, cannot seed passports")
 	}
 
 	var passports []Passport
@@ -169,8 +175,9 @@ func (s *V2Seeder) seedPassports() {
 	}
 
 	if err := s.db.Create(&passports).Error; err != nil {
-		log.Fatalf("failed to seed passports: %v", err)
+		return fmt.Errorf("failed to seed passports: %w", err)
 	}
+	return nil
 }
 
 type ClientNextContactReminder struct {
@@ -182,12 +189,14 @@ type ClientNextContactReminder struct {
 	SendTime                      time.Time `gorm:"not null"`
 }
 
-func (s *V2Seeder) seedClientNextContactReminders() {
+func (s *V2Seeder) seedClientNextContactReminders() error {
 	var clients []Client
-	s.db.Find(&clients)
+	if err := s.db.Find(&clients).Error; err != nil {
+		return fmt.Errorf("failed to fetch clients: %w", err)
+	}
 
 	if len(clients) == 0 {
-		log.Fatal("no clients found for contact reminders")
+		return fmt.Errorf("no clients found for contact reminders")
 	}
 
 	for i := 0; i < s.count; i++ {
@@ -204,6 +213,7 @@ func (s *V2Seeder) seedClientNextContactReminders() {
 			log.Println("error seeding contact reminder:", err)
 		}
 	}
+	return nil
 }
 
 type ClientInteraction struct {
@@ -220,14 +230,18 @@ type ClientInteraction struct {
 	Reminder             *ClientNextContactReminder `gorm:"foreignKey:ReminderID"`
 }
 
-func (s *V2Seeder) seedClientInteractions() {
+func (s *V2Seeder) seedClientInteractions() error {
 	var clients []Client
 	var reminders []ClientNextContactReminder
-	s.db.Find(&clients)
-	s.db.Find(&reminders)
+	if err := s.db.Find(&clients).Error; err != nil {
+		return fmt.Errorf("failed to fetch clients: %w", err)
+	}
+	if err := s.db.Find(&reminders).Error; err != nil {
+		return fmt.Errorf("failed to fetch reminders: %w", err)
+	}
 
 	if len(clients) == 0 {
-		log.Fatal("no clients found for interactions")
+		return fmt.Errorf("no clients found for interactions")
 	}
 
 	for i := 0; i < s.count; i++ {
@@ -253,6 +267,7 @@ func (s *V2Seeder) seedClientInteractions() {
 			log.Println("error seeding interaction:", err)
 		}
 	}
+	return nil
 }
 
 type NotificationTemplate struct {
@@ -262,9 +277,11 @@ type NotificationTemplate struct {
 	PromoID         *uint
 }
 
-func (s *V2Seeder) seedNotificationTemplates() {
+func (s *V2Seeder) seedNotificationTemplates() error {
 	var promos []Promotion
-	s.db.Find(&promos)
+	if err := s.db.Find(&promos).Error; err != nil {
+		return fmt.Errorf("failed to fetch promotions: %w", err)
+	}
 
 	for i := 0; i < s.count; i++ {
 		template := NotificationTemplate{
@@ -280,6 +297,7 @@ func (s *V2Seeder) seedNotificationTemplates() {
 			log.Println("error seeding notification template:", err)
 		}
 	}
+	return nil
 }
 
 type ClientPersonalNotification struct {
@@ -291,14 +309,18 @@ type ClientPersonalNotification struct {
 	SendTime                      time.Time
 }
 
-func (s *V2Seeder) seedClientPersonalNotifications() {
+func (s *V2Seeder) seedClientPersonalNotifications() error {
 	var clients []Client
 	var templates []NotificationTemplate
-	s.db.Find(&clients)
-	s.db.Find(&templates)
+	if err := s.db.Find(&clients).Error; err != nil {
+		return fmt.Errorf("failed to fetch clients: %w", err)
+	}
+	if err := s.db.Find(&templates).Error; err != nil {
+		return fmt.Errorf("failed to fetch templates: %w", err)
+	}
 
 	if len(clients) == 0 {
-		log.Fatal("no clients found for personal notifications")
+		return fmt.Errorf("no clients found for personal notifications")
 	}
 
 	for i := 0; i < s.count; i++ {
@@ -319,6 +341,7 @@ func (s *V2Seeder) seedClientPersonalNotifications() {
 			log.Println("error seeding personal notification:", err)
 		}
 	}
+	return nil
 }
 
 type Promotion struct {
@@ -329,7 +352,7 @@ type Promotion struct {
 	CreatedAt time.Time
 }
 
-func (s *V2Seeder) seedPromotions() {
+func (s *V2Seeder) seedPromotions() error {
 	for i := 0; i < s.count; i++ {
 		promo := Promotion{
 			Title:     gofakeit.Sentence(3),
@@ -341,6 +364,7 @@ func (s *V2Seeder) seedPromotions() {
 			log.Println("error seeding promotion:", err)
 		}
 	}
+	return nil
 }
 
 type V2Seeder struct {
@@ -355,15 +379,36 @@ func NewV2Seeder(db *gorm.DB, count int) *V2Seeder {
 	}
 }
 
-func (s *V2Seeder) Seed() {
-	s.seedCountries()
-	s.seedCities()
-	s.seedClients()
-	s.seedBans()
-	s.seedPassports()
-	s.seedClientNextContactReminders()
-	s.seedClientInteractions()
-	s.seedNotificationTemplates()
-	s.seedClientPersonalNotifications()
-	s.seedPromotions()
+func (s *V2Seeder) Seed() error {
+	if err := s.seedCountries(); err != nil {
+		return err
+	}
+	if err := s.seedCities(); err != nil {
+		return err
+	}
+	if err := s.seedClients(); err != nil {
+		return err
+	}
+	if err := s.seedBans(); err != nil {
+		return err
+	}
+	if err := s.seedPassports(); err != nil {
+		return err
+	}
+	if err := s.seedClientNextContactReminders(); err != nil {
+		return err
+	}
+	if err := s.seedClientInteractions(); err != nil {
+		return err
+	}
+	if err := s.seedNotificationTemplates(); err != nil {
+		return err
+	}
+	if err := s.seedClientPersonalNotifications(); err != nil {
+		return err
+	}
+	if err := s.seedPromotions(); err != nil {
+		return err
+	}
+	return nil
 }

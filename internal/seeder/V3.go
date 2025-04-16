@@ -1,6 +1,7 @@
 package seeder
 
 import (
+	"fmt"
 	"github.com/brianvoe/gofakeit/v7"
 	"gorm.io/gorm"
 	"log"
@@ -18,7 +19,7 @@ type Tour struct {
 	BaseDurationDays   int `gorm:"not null"`
 }
 
-func (s *V3Seeder) seedTours() {
+func (s *V3Seeder) seedTours() error {
 	for i := 0; i < s.count; i++ {
 		approved := gofakeit.Bool()
 		tour := Tour{
@@ -32,8 +33,10 @@ func (s *V3Seeder) seedTours() {
 		}
 		if err := s.db.Create(&tour).Error; err != nil {
 			log.Println("error seeding tour:", err)
+			return err
 		}
 	}
+	return nil
 }
 
 type Booking struct {
@@ -46,13 +49,15 @@ type Booking struct {
 	UpdatedAt      time.Time `gorm:"default:current_timestamp"`
 }
 
-func (s *V3Seeder) seedBookings() {
+func (s *V3Seeder) seedBookings() error {
 	var tours []Tour
-	s.db.Find(&tours)
+	if err := s.db.Find(&tours).Error; err != nil {
+		return fmt.Errorf("failed to fetch tours: %w", err)
+	}
 
 	for i := 0; i < s.count; i++ {
 		if len(tours) == 0 {
-			log.Fatal("no tours found, cannot seed bookings")
+			return fmt.Errorf("no tours found, cannot seed bookings")
 		}
 
 		booking := Booking{
@@ -62,8 +67,10 @@ func (s *V3Seeder) seedBookings() {
 		}
 		if err := s.db.Create(&booking).Error; err != nil {
 			log.Println("error seeding booking:", err)
+			return err
 		}
 	}
+	return nil
 }
 
 type BookingAgreement struct {
@@ -73,15 +80,19 @@ type BookingAgreement struct {
 	SignedDate time.Time `gorm:"not null"`
 }
 
-func (s *V3Seeder) seedBookingAgreements() {
+func (s *V3Seeder) seedBookingAgreements() error {
 	var clients []Client
 	var bookings []Booking
-	s.db.Find(&clients)
-	s.db.Find(&bookings)
+	if err := s.db.Find(&clients).Error; err != nil {
+		return fmt.Errorf("failed to fetch clients: %w", err)
+	}
+	if err := s.db.Find(&bookings).Error; err != nil {
+		return fmt.Errorf("failed to fetch bookings: %w", err)
+	}
 
 	for i := 0; i < s.count; i++ {
 		if len(clients) == 0 || len(bookings) == 0 {
-			log.Fatal("missing clients or bookings")
+			return fmt.Errorf("missing clients or bookings")
 		}
 
 		ba := BookingAgreement{
@@ -91,8 +102,10 @@ func (s *V3Seeder) seedBookingAgreements() {
 		}
 		if err := s.db.Create(&ba).Error; err != nil {
 			log.Println("error seeding booking agreement:", err)
+			return err
 		}
 	}
+	return nil
 }
 
 type Assignee struct {
@@ -100,21 +113,25 @@ type Assignee struct {
 	ClientID uint
 }
 
-func (s *V3Seeder) seedAssignees() {
+func (s *V3Seeder) seedAssignees() error {
 	var clients []Client
-	s.db.Find(&clients)
+	if err := s.db.Find(&clients).Error; err != nil {
+		return fmt.Errorf("failed to fetch clients: %w", err)
+	}
 
 	for i := 0; i < s.count; i++ {
 		if len(clients) == 0 {
-			log.Fatal("no clients found, cannot seed assignees")
+			return fmt.Errorf("no clients found, cannot seed assignees")
 		}
 		assignee := Assignee{
 			ClientID: getRandomFromSlice(clients).ID,
 		}
 		if err := s.db.Create(&assignee).Error; err != nil {
 			log.Println("error seeding assignee:", err)
+			return err
 		}
 	}
+	return nil
 }
 
 type ContractTemplate struct {
@@ -124,7 +141,7 @@ type ContractTemplate struct {
 	ValidityPeriodDays int    `gorm:"not null"`
 }
 
-func (s *V3Seeder) seedContractTemplates() {
+func (s *V3Seeder) seedContractTemplates() error {
 	for i := 0; i < s.count; i++ {
 		ct := ContractTemplate{
 			Name:               gofakeit.Word() + " contract",
@@ -133,8 +150,10 @@ func (s *V3Seeder) seedContractTemplates() {
 		}
 		if err := s.db.Create(&ct).Error; err != nil {
 			log.Println("error seeding contract template:", err)
+			return err
 		}
 	}
+	return nil
 }
 
 type Contract struct {
@@ -147,15 +166,19 @@ type Contract struct {
 	TotalPrice float64 `gorm:"type:decimal(10,2);not null"`
 }
 
-func (s *V3Seeder) seedContracts() {
+func (s *V3Seeder) seedContracts() error {
 	var assignees []Assignee
 	var templates []ContractTemplate
-	s.db.Find(&assignees)
-	s.db.Find(&templates)
+	if err := s.db.Find(&assignees).Error; err != nil {
+		return fmt.Errorf("failed to fetch assignees: %w", err)
+	}
+	if err := s.db.Find(&templates).Error; err != nil {
+		return fmt.Errorf("failed to fetch contract templates: %w", err)
+	}
 
 	for i := 0; i < s.count; i++ {
 		if len(assignees) == 0 || len(templates) == 0 {
-			log.Fatal("missing assignees or templates")
+			return fmt.Errorf("missing assignees or templates")
 		}
 
 		issueDate := gofakeit.Date()
@@ -170,8 +193,10 @@ func (s *V3Seeder) seedContracts() {
 		}
 		if err := s.db.Create(&contract).Error; err != nil {
 			log.Println("error seeding contract:", err)
+			return err
 		}
 	}
+	return nil
 }
 
 type ConsentTemplate struct {
@@ -181,7 +206,7 @@ type ConsentTemplate struct {
 	Content string `gorm:"not null"`
 }
 
-func (s *V3Seeder) seedConsentTemplates() {
+func (s *V3Seeder) seedConsentTemplates() error {
 	for i := 0; i < s.count; i++ {
 		ct := ConsentTemplate{
 			Name:    gofakeit.AppName(),
@@ -190,8 +215,10 @@ func (s *V3Seeder) seedConsentTemplates() {
 		}
 		if err := s.db.Create(&ct).Error; err != nil {
 			log.Println("error seeding consent template:", err)
+			return err
 		}
 	}
+	return nil
 }
 
 type AgreementConsent struct {
@@ -203,17 +230,23 @@ type AgreementConsent struct {
 	Status     string
 }
 
-func (s *V3Seeder) seedAgreementConsents() {
+func (s *V3Seeder) seedAgreementConsents() error {
 	var assignees []Assignee
 	var contracts []Contract
 	var templates []ConsentTemplate
-	s.db.Find(&assignees)
-	s.db.Find(&contracts)
-	s.db.Find(&templates)
+	if err := s.db.Find(&assignees).Error; err != nil {
+		return fmt.Errorf("failed to fetch assignees: %w", err)
+	}
+	if err := s.db.Find(&contracts).Error; err != nil {
+		return fmt.Errorf("failed to fetch contracts: %w", err)
+	}
+	if err := s.db.Find(&templates).Error; err != nil {
+		return fmt.Errorf("failed to fetch consent templates: %w", err)
+	}
 
 	for i := 0; i < s.count; i++ {
 		if len(assignees) == 0 || len(contracts) == 0 {
-			log.Fatal("missing assignees or contracts")
+			return fmt.Errorf("missing assignees or contracts")
 		}
 
 		var tmplID *uint
@@ -231,8 +264,10 @@ func (s *V3Seeder) seedAgreementConsents() {
 		}
 		if err := s.db.Create(&ac).Error; err != nil {
 			log.Println("error seeding agreement consent:", err)
+			return err
 		}
 	}
+	return nil
 }
 
 type PaymentLink struct {
@@ -242,13 +277,15 @@ type PaymentLink struct {
 	QRCode    string `gorm:"not null"`
 }
 
-func (s *V3Seeder) seedPaymentLinks() {
+func (s *V3Seeder) seedPaymentLinks() error {
 	var bookings []Booking
-	s.db.Find(&bookings)
+	if err := s.db.Find(&bookings).Error; err != nil {
+		return fmt.Errorf("failed to fetch bookings: %w", err)
+	}
 
 	for i := 0; i < s.count; i++ {
 		if len(bookings) == 0 {
-			log.Fatal("no bookings found for payment links")
+			return fmt.Errorf("no bookings found for payment links")
 		}
 		link := PaymentLink{
 			BookingID: getRandomFromSlice(bookings).ID,
@@ -257,8 +294,10 @@ func (s *V3Seeder) seedPaymentLinks() {
 		}
 		if err := s.db.Create(&link).Error; err != nil {
 			log.Println("error seeding payment link:", err)
+			return err
 		}
 	}
+	return nil
 }
 
 type V3Seeder struct {
@@ -273,14 +312,33 @@ func NewV3Seeder(db *gorm.DB, count int) *V3Seeder {
 	}
 }
 
-func (s *V3Seeder) Seed() {
-	s.seedTours()
-	s.seedBookings()
-	s.seedBookingAgreements()
-	s.seedAssignees()
-	s.seedContractTemplates()
-	s.seedContracts()
-	s.seedConsentTemplates()
-	s.seedAgreementConsents()
-	s.seedPaymentLinks()
+func (s *V3Seeder) Seed() error {
+	if err := s.seedTours(); err != nil {
+		return err
+	}
+	if err := s.seedBookings(); err != nil {
+		return err
+	}
+	if err := s.seedBookingAgreements(); err != nil {
+		return err
+	}
+	if err := s.seedAssignees(); err != nil {
+		return err
+	}
+	if err := s.seedContractTemplates(); err != nil {
+		return err
+	}
+	if err := s.seedContracts(); err != nil {
+		return err
+	}
+	if err := s.seedConsentTemplates(); err != nil {
+		return err
+	}
+	if err := s.seedAgreementConsents(); err != nil {
+		return err
+	}
+	if err := s.seedPaymentLinks(); err != nil {
+		return err
+	}
+	return nil
 }

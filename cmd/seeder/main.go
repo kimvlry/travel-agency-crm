@@ -74,18 +74,10 @@ func checkAppliedFlywayVersions(db *gorm.DB) map[string]bool {
 	return applied
 }
 
-func markSeedingApplied(db *gorm.DB, version string) {
-	err := db.Exec(
+func markSeedingApplied(tx *gorm.DB, version string) error {
+	return tx.Exec(
 		"INSERT INTO seed_history (version) VALUES (?) ON CONFLICT DO NOTHING", version,
 	).Error
-	if err != nil {
-		log.Fatalf("failed to mark seed as applied: %v", err)
-	}
-}
-
-type Seeder struct {
-	Version string
-	Run     func()
 }
 
 func main() {
@@ -97,43 +89,52 @@ func main() {
 		log.Fatal("invalid SEED_COUNT env ", errSeed)
 	}
 
-	seeders := []Seeder{
-		{"1", func() { seeder.NewV1Seeder().Seed() }},
-		{"2", func() { seeder.NewV2Seeder(db, seedCount).Seed() }},
-		{"3", func() { seeder.NewV3Seeder(db, seedCount).Seed() }},
-		{"4", func() { seeder.NewV4Seeder(db, seedCount).Seed() }},
-		{"5", func() { seeder.NewV5Seeder(db, seedCount).Seed() }},
-		{"6", func() { seeder.NewV6Seeder(db).Seed() }},
-	}
-
 	appliedMigrations := checkAppliedFlywayVersions(db)
 	appliedSeedings := checkAppliedSeedVersions(db)
 
-	for _, s := range seeders {
-		if !appliedMigrations[s.Version] {
-			log.Printf("Skipping version %s (migration not applied)\n", s.Version)
+	for _, version := range []string{"1", "2", "3", "4", "5", "6"} {
+		if !appliedMigrations[version] {
+			log.Printf("Skipping version %s (migration not applied)\n", version)
 			continue
 		}
-		if appliedSeedings[s.Version] {
-			log.Printf("Skipping version %s (already seeded)\n", s.Version)
+		if appliedSeedings[version] {
+			log.Printf("Skipping version %s (already seeded)\n", version)
 			continue
 		}
 
-		log.Printf("Seeding for version %s\n", s.Version)
-		err := func() error {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Printf("Seeding panicked for version %s: %v\n", s.Version, r)
-				}
-			}()
-			s.Run()
+		log.Printf("Seeding for version %s\n", version)
+
+		err := db.Transaction(func(tx *gorm.DB) error {
+			var seedErr error
+			switch version {
+			case "1":
+				seedErr = seeder.NewV1Seeder().Seed()
+			case "2":
+				seedErr = seeder.NewV2Seeder(tx, seedCount).Seed()
+			case "3":
+				seedErr = seeder.NewV3Seeder(tx, seedCount).Seed()
+			case "4":
+				seedErr = seeder.NewV4Seeder(tx, seedCount).Seed()
+			case "5":
+				seedErr = seeder.NewV5Seeder(tx, seedCount).Seed()
+			case "6":
+				seedErr = seeder.NewV6Seeder(tx).Seed()
+			default:
+				return fmt.Errorf("unknown seeder version: %s", version)
+			}
+
+			if seedErr != nil {
+				return fmt.Errorf("seeding error: %w", seedErr)
+			}
+			if err := markSeedingApplied(tx, version); err != nil {
+				return fmt.Errorf("failed to mark version %s as seeded: %w", version, err)
+			}
 			return nil
-		}()
+		})
 
 		if err != nil {
-			log.Printf("Error seeding for version %s: %v\n", s.Version, err)
-			continue
+			log.Printf("Transaction failed: %v\n", err)
 		}
-		markSeedingApplied(db, s.Version)
+
 	}
 }
