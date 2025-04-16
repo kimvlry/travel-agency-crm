@@ -1,4 +1,4 @@
-package migrations_seeders
+package seeder
 
 import (
 	"github.com/brianvoe/gofakeit/v7"

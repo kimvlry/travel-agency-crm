@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"travel-agency-seeder/migrations_seeders"
+	"travel-agency-seeder/internal/seeder"
 )
 
 func connectToDb() *gorm.DB {
@@ -39,6 +39,6 @@ func main() {
 		log.Fatal("invalid seed count env", err)
 	}
 
-	v2 := migrations_seeders.NewV2Seeder(db, seedCount)
+	v2 := seeder.NewV2Seeder(db, seedCount)
 	v2.Seed()
 }

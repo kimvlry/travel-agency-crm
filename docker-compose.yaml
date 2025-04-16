@@ -36,7 +36,7 @@ services:
       -target=${MIGRATION_VERSION}
       migrate &&
     volumes:
-      - ./flyway/sql:/flyway/sql
+      - ./migrations/flyway/sql:/flyway/sql
     healthcheck:
       test: [ "CMD", "flyway", "info" ]
       interval: 10s
@@ -47,8 +47,8 @@ services:
   seeding:
     container_name: seeder
     build:
-      context: seeder
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/seeder/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
