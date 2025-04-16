@@ -92,37 +92,39 @@ func main() {
 	appliedMigrations := checkAppliedFlywayVersions(db)
 	appliedSeedings := checkAppliedSeedVersions(db)
 
-	for _, version := range []string{"1", "2", "3", "4", "5", "6"} {
+	var seeders = map[string]func(*gorm.DB, int) error{
+		"1": func(db *gorm.DB, count int) error {
+			return seeder.NewV1Seeder().Seed()
+		},
+		"2": func(db *gorm.DB, count int) error {
+			return seeder.NewV2Seeder(db, count).Seed()
+		},
+		"3": func(db *gorm.DB, count int) error {
+			return seeder.NewV3Seeder(db, count).Seed()
+		},
+		"4": func(db *gorm.DB, count int) error {
+			return seeder.NewV4Seeder(db, count).Seed()
+		},
+		"5": func(db *gorm.DB, count int) error {
+			return seeder.NewV5Seeder(db, count).Seed()
+		},
+		"6": func(db *gorm.DB, count int) error {
+			return seeder.NewV6Seeder(db).Seed()
+		},
+	}
+
+	for version, seedFunc := range seeders {
 		if !appliedMigrations[version] {
-			log.Printf("Skipping version %s (migration not applied)\n", version)
+			log.Printf("skipping version %s (migration not applied)\n", version)
 			continue
 		}
 		if appliedSeedings[version] {
-			log.Printf("Skipping version %s (already seeded)\n", version)
+			log.Printf("skipping version %s (already seeded)\n", version)
 			continue
 		}
 
-		log.Printf("Seeding for version %s\n", version)
-
 		err := db.Transaction(func(tx *gorm.DB) error {
-			var seedErr error
-			switch version {
-			case "1":
-				seedErr = seeder.NewV1Seeder().Seed()
-			case "2":
-				seedErr = seeder.NewV2Seeder(tx, seedCount).Seed()
-			case "3":
-				seedErr = seeder.NewV3Seeder(tx, seedCount).Seed()
-			case "4":
-				seedErr = seeder.NewV4Seeder(tx, seedCount).Seed()
-			case "5":
-				seedErr = seeder.NewV5Seeder(tx, seedCount).Seed()
-			case "6":
-				seedErr = seeder.NewV6Seeder(tx).Seed()
-			default:
-				return fmt.Errorf("unknown seeder version: %s", version)
-			}
-
+			seedErr := seedFunc(tx, seedCount)
 			if seedErr != nil {
 				return fmt.Errorf("seeding error: %w", seedErr)
 			}
@@ -131,10 +133,10 @@ func main() {
 			}
 			return nil
 		})
-
 		if err != nil {
-			log.Printf("Transaction failed: %v\n", err)
+			log.Printf("transaction for version %s failed: %v\n", version, err)
+		} else {
+			log.Printf("successfully seeded version %s\n", version)
 		}
-
 	}
 }
