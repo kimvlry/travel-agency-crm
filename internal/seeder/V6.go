@@ -23,7 +23,7 @@ func (s *V6Seeder) SeedAnalysts() error {
             DO $$
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '%s') THEN
-                    CREATE ROLE "%s" WITH LOGIN PASSWORD '%s' NOINHERIT;
+                    CREATE ROLE "%s" WITH LOGIN PASSWORD '%s' INHERIT;
                 END IF;
             END
             $$;
