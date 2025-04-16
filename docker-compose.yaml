@@ -61,6 +61,7 @@ services:
       MIGRATION_VERSION: ${MIGRATION_VERSION}
       SEED_COUNT: ${SEED_COUNT:-100}
       APP_ENV: ${APP_ENV}
+      ANALYST_NAMES: ${ANALYST_NAMES}
     command: [ "sh", "-c", 'if [ "$APP_ENV" = "dev" ]; then ./seeder; fi' ]
 
 

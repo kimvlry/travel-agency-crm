@@ -98,10 +98,12 @@ func main() {
 	}
 
 	seeders := []Seeder{
+		{"1", func() { seeder.NewV1Seeder().Seed() }},
 		{"2", func() { seeder.NewV2Seeder(db, seedCount).Seed() }},
 		{"3", func() { seeder.NewV3Seeder(db, seedCount).Seed() }},
 		{"4", func() { seeder.NewV4Seeder(db, seedCount).Seed() }},
 		{"5", func() { seeder.NewV5Seeder(db, seedCount).Seed() }},
+		{"6", func() { seeder.NewV6Seeder(db).Seed() }},
 	}
 
 	appliedMigrations := checkAppliedFlywayVersions(db)
