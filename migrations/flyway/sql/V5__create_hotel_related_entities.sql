@@ -35,5 +35,5 @@ create table hotel_interactions (
     type interaction_type not null,
     summary text,
     agreements text,
-    next_contact_reminder integer references hotel_next_contact_reminders(id) on delete set null
+    next_contact_reminder_id integer references hotel_next_contact_reminders(id) on delete set null
 );
