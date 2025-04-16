@@ -22,7 +22,7 @@ func (s *V3Seeder) seedTours() {
 	for i := 0; i < s.count; i++ {
 		approved := gofakeit.Bool()
 		tour := Tour{
-			Title:              gofakeit.Company() + " Tour",
+			Title:              gofakeit.Country() + " tour",
 			PriceEUR:           gofakeit.Price(100, 10000),
 			Quota:              gofakeit.Number(10, 100),
 			MealsType:          getRandomFromSlice(MealsTypes),
