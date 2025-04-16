@@ -2,7 +2,6 @@ create table hotels (
     id serial primary key,
     name varchar(255) not null,
     address text not null,
-    price_range varchar(100) not null,
     cancellation_terms text not null
 );
 

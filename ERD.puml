@@ -4,7 +4,7 @@ left to right direction
 
 package "client" {
   entity clients{
-    + id: INTEGER <<PK>> 
+    + id: INTEGER <<PK>>
     --
     full_name: VARCHAR(255) NOT NULL
     phone: VARCHAR(20) NOT NULL
@@ -14,11 +14,11 @@ package "client" {
     is_blacklisted: BOOLEAN DEFAULT FALSE
   }
 
-  entity bans { 
+  entity bans {
     + id: INTEGER <<PK>>
     --
     client_id: INTEGER <<FK>> NOT NULL
-    ban_reason: TEXT 
+    ban_reason: TEXT
   }
 
   entity countries {
@@ -84,7 +84,7 @@ package "client" {
     --
     type: notification_type NOT NULL
     message_template: TEXT
-    promo_id: INTEGER 
+    promo_id: INTEGER
   }
 
   entity promotions {
@@ -183,7 +183,7 @@ package "tour" {
   }
 
   ' Usually tours run several iterations during the year
-  entity tour_iterations { 
+  entity tour_iterations {
     + id: INTEGER <<PK>>
     --
     tour_id: INTEGER <<FK>> (tours)
@@ -286,7 +286,6 @@ package "hotel" {
     --
     name: VARCHAR(255) NOT NULL
     address: TEXT NOT NULL
-    price_range: VARCHAR(100) NOT NULL
     cancellation_terms: TEXT NOT NULL
   }
 
@@ -321,7 +320,7 @@ note right of client_interactions
   - whatsapp
   - email
   - meeting
-  
+
   **interaction_type**:
   - discussion
   - agreement
@@ -351,7 +350,7 @@ note right of agreement_consents
   - personal_data
   - contract_terms
   - ad
-  
+
   **consent_status**:
   - granted
   - pending

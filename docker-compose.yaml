@@ -58,6 +58,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MIGRATION_VERSION: ${MIGRATION_VERSION}
       SEED_COUNT: ${SEED_COUNT:-100}
       APP_ENV: ${APP_ENV}
     command: [ "sh", "-c", 'if [ "$APP_ENV" = "dev" ]; then ./seeder; fi' ]
