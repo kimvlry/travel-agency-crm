@@ -127,7 +127,6 @@ package "booking and contract" {
     + id: INTEGER <<PK>>
     --
     name: VARCHAR(100) NOT NULL
-    type: VARCHAR(50) NOT NULL
     content: TEXT NOT NULL
     validity_period_days: INTEGER NOT NULL
   }
@@ -164,10 +163,8 @@ package "booking and contract" {
   entity payment_links {
     + id: INTEGER <<PK>>
     --
-    booking_id: INTEGER <<FK>> (bookings)
     url: VARCHAR(255) NOT NULL
     qr_code: VARCHAR(255) NOT NULL
-    status: VARCHAR(50) NOT NULL
   }
 }
 

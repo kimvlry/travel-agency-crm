@@ -14,7 +14,6 @@ create table bookings (
     tour_id integer references tours(id),
     status booking_status default 'draft',
     contract_number varchar(50) unique,
-    payment_links text,
     created_at timestamptz default current_timestamp,
     updated_at timestamptz default current_timestamp
 );
@@ -34,7 +33,6 @@ create table assignees (
 create table contract_templates (
     id serial primary key,
     name varchar(100) not null,
-    type varchar(50) not null,
     content text not null,
     validity_period_days integer not null
 );
@@ -69,6 +67,5 @@ create table payment_links (
     id serial primary key,
     booking_id integer references bookings(id) on delete cascade,
     url varchar(255) not null,
-    qr_code varchar(255) not null,
-    status varchar(50) not null
+    qr_code varchar(255) not null
 );
