@@ -298,7 +298,7 @@ package "hotel" {
     type: interaction_type NOT NULL
     summary: TEXT
     agreements: TEXT
-    next_contact_reminder : reminder_id <<FK>> (hotel_next_contact_reminders)
+    next_contact_reminder_id : reminder_id <<FK>> (hotel_next_contact_reminders)
   }
 
   entity hotel_next_contact_reminders {
