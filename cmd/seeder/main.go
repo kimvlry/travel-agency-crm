@@ -26,7 +26,6 @@ func connectToDb() *gorm.DB {
 	if err != nil {
 		log.Fatal("couldn't connect to db", err)
 	}
-
 	return db
 }
 
@@ -94,7 +93,7 @@ func main() {
 
 	var seeders = map[string]func(*gorm.DB, int) error{
 		"1": func(db *gorm.DB, count int) error {
-			return seeder.NewV1Seeder().Seed()
+			return seeder.NewV1DummySeeder().Seed()
 		},
 		"2": func(db *gorm.DB, count int) error {
 			return seeder.NewV2Seeder(db, count).Seed()
