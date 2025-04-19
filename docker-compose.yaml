@@ -18,6 +18,7 @@ services:
       start_period: 30s
       timeout: 10s
 
+# run `sqlc generate` after migrations
   flyway:
     image: flyway/flyway
     container_name: flyway_migrations
