@@ -11,23 +11,23 @@ create table tours (
 
 create table bookings (
     id serial primary key,
-    tour_id integer references tours(id),
-    status booking_status default 'draft',
-    contract_number varchar(50) unique,
-    created_at timestamptz default current_timestamp,
-    updated_at timestamptz default current_timestamp
+    tour_id integer not null references tours(id),
+    status booking_status not null default 'draft',
+    contract_number varchar(50) not null unique,
+    created_at timestamptz not null default current_timestamp,
+    updated_at timestamptz not null default current_timestamp
 );
 
 create table booking_agreements (
     id serial primary key,
-    client_id integer references clients(id),
-    booking_id integer references bookings(id),
+    client_id integer not null references clients(id),
+    booking_id integer not null references bookings(id),
     signed_date timestamptz not null
 );
 
 create table assignees (
     id serial primary key,
-    client_id integer references clients(id)
+    client_id integer not null  references clients(id)
 );
 
 create table contract_templates (
@@ -39,8 +39,8 @@ create table contract_templates (
 
 create table contracts (
     id serial primary key,
-    assignee_id integer references assignees(id),
-    template_id integer references contract_templates(id),
+    assignee_id integer not null references assignees(id),
+    template_id integer not null references contract_templates(id),
     issue_date timestamptz not null,
     sign_date timestamptz,
     status consent_status not null,
@@ -56,16 +56,16 @@ create table consent_templates (
 
 create table agreement_consents (
     id serial primary key,
-    assignee_id integer references assignees(id),
-    contract_id integer references contracts(id),
-    template_id integer references consent_templates(id) on delete set null,
+    assignee_id integer not null references assignees(id),
+    contract_id integer not null references contracts(id),
+    template_id integer not null references consent_templates(id) on delete set null,
     date date not null,
     status consent_status not null
 );
 
 create table payment_links (
     id serial primary key,
-    booking_id integer references bookings(id) on delete cascade,
+    booking_id integer not null references bookings(id) on delete cascade,
     url varchar(255) not null,
     qr_code varchar(255) not null
 );

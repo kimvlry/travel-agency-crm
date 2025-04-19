@@ -7,7 +7,7 @@ create table hotels (
 
 create table hotel_room_categories (
     id serial primary key,
-    hotel_id integer references hotels(id) on delete cascade,
+    hotel_id integer not null references hotels(id) on delete cascade,
     name varchar(100) not null,
     price_per_night decimal(10,2) not null,
     max_guests integer not null
@@ -21,7 +21,7 @@ create table amenities (
 
 create table hotel_next_contact_reminders (
     id serial primary key,
-    hotel_id integer references hotels(id) on delete cascade,
+    hotel_id integer not null references hotels(id) on delete cascade,
     preferred_communication_channel communication_channel not null,
     message text not null,
     send_date timestamptz not null
@@ -29,7 +29,7 @@ create table hotel_next_contact_reminders (
 
 create table hotel_interactions (
     id serial primary key,
-    hotel_id integer references hotels(id) on delete cascade,
+    hotel_id integer not null references hotels(id) on delete cascade,
     date_utc timestamptz not null,
     communication_channel communication_channel not null,
     type interaction_type not null,

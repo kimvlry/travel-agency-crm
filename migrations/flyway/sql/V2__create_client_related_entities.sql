@@ -22,13 +22,13 @@ create table clients (
 
 create table bans (
     id serial primary key,
-    client_id integer references clients(id) on delete cascade,
-    ban_reason text
+    client_id integer not null references clients(id) on delete cascade,
+    ban_reason text not null
 );
 
 create table passports (
     id serial primary key,
-    client_id integer references clients(id) on delete cascade,
+    client_id integer not null references clients(id) on delete cascade,
     type passport_type not null,
     number varchar(50) not null,
     expiration_date date not null,
@@ -38,7 +38,7 @@ create table passports (
 
 create table client_next_contact_reminders (
     id serial primary key,
-    client_id integer references clients(id) on delete cascade,
+    client_id integer not null references clients(id) on delete cascade,
     preferred_communication_channel communication_channel not null,
     message text not null,
     send_time timestamptz not null
@@ -46,7 +46,7 @@ create table client_next_contact_reminders (
 
 create table client_interactions (
     id serial primary key,
-    client_id integer references clients(id) on delete cascade,
+    client_id integer not null references clients(id) on delete cascade,
     time timestamptz not null,
     communication_channel communication_channel not null,
     meeting_location varchar(255),
@@ -59,24 +59,21 @@ create table client_interactions (
 create table notification_templates (
     id serial primary key,
     type notification_type not null,
-    message_template text,
-    promo_id integer
+    message_template text
 );
 
 create table client_personal_notifications (
     id serial primary key,
-    client_id integer references clients(id) on delete cascade,
+    client_id integer not null references clients(id) on delete cascade,
     preferred_communication_channel communication_channel not null,
-    template_id integer references notification_templates(id) on delete set null,
+    template_id integer not null references notification_templates(id) on delete set null,
     send_time timestamptz not null
 );
-
-
 
 create table promotions (
     id serial primary key,
     title varchar(255) not null,
     content text not null,
     promo_type promotion_type not null,
-    created_at timestamptz default current_timestamp
+    created_at timestamptz not null default current_timestamp
 );

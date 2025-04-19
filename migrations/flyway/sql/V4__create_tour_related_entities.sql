@@ -1,6 +1,6 @@
 create table tour_iterations (
     id serial primary key,
-    tour_id integer references tours(id) on delete cascade,
+    tour_id integer not null references tours(id) on delete cascade,
     start_date date not null,
     end_date date not null,
     constraint unique_tour_id_start_date unique (tour_id, start_date)
@@ -8,13 +8,13 @@ create table tour_iterations (
 
 create table tour_routes (
     id serial primary key,
-    tour_id integer references tours(id) on delete cascade
+    tour_id integer not null references tours(id) on delete cascade
 );
 
 create table route_points (
     id serial primary key,
-    route_id integer references tour_routes(id) on delete cascade,
-    city_id integer references cities(id) on delete set null,
+    route_id integer not null references tour_routes(id) on delete cascade,
+    city_id integer not null references cities(id) on delete set null,
     name varchar(255) not null,
     address text not null,
     duration_time interval,
@@ -29,8 +29,8 @@ create table transport_services (
 
 create table transfers (
     id serial primary key,
-    tour_id integer references tours(id) on delete cascade,
-    transport_id integer references transport_services(id) on delete set null,
+    tour_id integer not null references tours(id) on delete cascade,
+    transport_id integer not null references transport_services(id) on delete set null,
     departure_point integer references route_points(id) on delete cascade,
     arrival_point integer references route_points(id) on delete cascade,
     departure_time timestamptz not null
@@ -45,10 +45,10 @@ create table organizers (
 
 create table excursions (
     id serial primary key,
-    tour_id integer references tours(id) on delete cascade,
-    organizer_id integer references organizers(id) on delete set null,
+    tour_id integer not null references tours(id) on delete cascade,
+    organizer_id integer not null references organizers(id) on delete set null,
     name varchar(255) not null,
-    meeting_location integer references route_points(id) on delete cascade,
+    meeting_location integer not null references route_points(id) on delete cascade,
     meeting_time timestamptz not null
 );
 
@@ -61,7 +61,7 @@ create table insurance_companies (
 
 create table insurances (
     id serial primary key,
-    tour_id integer references tours(id) on delete cascade,
-    insurance_company_id integer references insurance_companies(id) on delete set null,
+    tour_id integer not null references tours(id) on delete cascade,
+    insurance_company_id integer not null references insurance_companies(id) on delete set null,
     coverage_type insurance_type not null
 );
