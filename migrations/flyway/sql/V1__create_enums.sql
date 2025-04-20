@@ -25,7 +25,7 @@ create type booking_status as enum (
     'partially_paid',
     'fully_paid',
     'cancellation_requested',
-    'canceled'
+    'cancelled'
 );
 
 create type agreement_consent_type as enum (

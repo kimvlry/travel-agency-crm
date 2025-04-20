@@ -63,7 +63,7 @@ const (
 	BookingStatusPartiallyPaid         BookingStatus = "partially_paid"
 	BookingStatusFullyPaid             BookingStatus = "fully_paid"
 	BookingStatusCancellationRequested BookingStatus = "cancellation_requested"
-	BookingStatusCanceled              BookingStatus = "canceled"
+	BookingStatusCancelled             BookingStatus = "cancelled"
 )
 
 func (e *BookingStatus) Scan(src interface{}) error {
