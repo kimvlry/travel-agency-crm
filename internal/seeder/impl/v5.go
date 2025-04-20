@@ -1,9 +1,9 @@
 package impl
 
 import (
-	"fmt"
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/jmoiron/sqlx"
+
 	"travel-agency-seeder/internal/models"
 	"travel-agency-seeder/internal/seeder"
 )
@@ -13,9 +13,7 @@ type V5Seeder struct {
 }
 
 func NewV5Seeder(tx *sqlx.Tx, seedCount int) *V5Seeder {
-	return &V5Seeder{
-		BaseSeeder: seeder.NewBaseSeeder(tx, seedCount),
-	}
+	return &V5Seeder{BaseSeeder: seeder.NewBaseSeeder(tx, seedCount)}
 }
 
 func (s *V5Seeder) Seed() error {
@@ -38,103 +36,110 @@ func (s *V5Seeder) Seed() error {
 }
 
 func (s *V5Seeder) seedHotels() error {
-	for i := 0; i < s.SeedCount; i++ {
-		hotel := models.Hotel{
-			Name:              gofakeit.Company(),
-			Address:           gofakeit.Address().Address,
-			CancellationTerms: gofakeit.Paragraph(1, 2, 5, " "),
-		}
-		if err := s.db.Create(&hotel).Error; err != nil {
-			return fmt.Errorf("error seeding hotel: %w", err)
-		}
-	}
-	return nil
+	op := []seeder.SeedOperation{{
+		Name:  "insert hotels",
+		Query: `INSERT INTO hotels (name, address, cancellation_terms) VALUES ($1, $2, $3)`,
+		Builder: func(f *gofakeit.Faker) []interface{} {
+			return []interface{}{
+				f.Company(),
+				f.Address().Address,
+				f.Paragraph(1, 2, 5, " "),
+			}
+		},
+	}}
+	return s.BatchSeed(op)
 }
 
 func (s *V5Seeder) seedHotelRoomCategories() error {
 	var hotels []models.Hotel
-	s.db.Find(&hotels)
-
-	for i := 0; i < s.SeedCount; i++ {
-		if len(hotels) == 0 {
-			return fmt.Errorf("no hotels found, cannot seed hotel room categories")
-		}
-		category := models.HotelRoomCategory{
-			HotelID:       seeder.getRandomFromSlice(hotels).ID,
-			Name:          gofakeit.Word() + " Room",
-			PricePerNight: gofakeit.Price(50, 1000),
-			MaxGuests:     gofakeit.Number(1, 5),
-		}
-		if err := s.db.Create(&category).Error; err != nil {
-			return fmt.Errorf("error seeding hotel room category: %w", err)
-		}
+	if err := s.TryGetAllEntities("hotels", &hotels, "SELECT id FROM hotels"); err != nil {
+		return err
 	}
-	return nil
+	op := []seeder.SeedOperation{{
+		Name: "insert hotel_room_categories",
+		Query: `INSERT INTO hotel_room_categories (hotel_id, name, price_per_night, max_guests) 
+				VALUES ($1, $2, $3, $4)`,
+		Builder: func(f *gofakeit.Faker) []interface{} {
+			hotel := models.GetRandomFromSlice(hotels)
+			return []interface{}{
+				hotel.ID,
+				f.Word() + " Room",
+				f.Price(50, 1000),
+				f.Number(1, 5),
+			}
+		},
+	}}
+	return s.BatchSeed(op)
 }
 
 func (s *V5Seeder) seedAmenities() error {
-	for i := 0; i < s.SeedCount; i++ {
-		amenity := models.Amenity{
-			Name:        gofakeit.Word(),
-			Description: gofakeit.Paragraph(1, 2, 5, " "),
-		}
-		if err := s.db.Create(&amenity).Error; err != nil {
-			return fmt.Errorf("error seeding amenity: %w", err)
-		}
-	}
-	return nil
+	op := []seeder.SeedOperation{{
+		Name:  "insert amenities",
+		Query: `INSERT INTO amenities (name, description) VALUES ($1, $2)`,
+		Builder: func(f *gofakeit.Faker) []interface{} {
+			return []interface{}{
+				f.Word(),
+				f.Paragraph(1, 2, 5, " "),
+			}
+		},
+	}}
+	return s.BatchSeed(op)
 }
 
 func (s *V5Seeder) seedHotelNextContactReminders() error {
 	var hotels []models.Hotel
-	s.db.Find(&hotels)
-
-	for i := 0; i < s.SeedCount; i++ {
-		if len(hotels) == 0 {
-			return fmt.Errorf("no hotels found, cannot seed hotel next contact reminders")
-		}
-		reminder := models.HotelNextContactReminder{
-			HotelID:                       seeder.getRandomFromSlice(hotels).ID,
-			PreferredCommunicationChannel: seeder.getRandomFromSlice(models.CommunicationChannels),
-			Message:                       gofakeit.Paragraph(1, 2, 5, " "),
-			SendDate:                      gofakeit.Date(),
-		}
-		if err := s.db.Create(&reminder).Error; err != nil {
-			return fmt.Errorf("error seeding hotel next contact reminder: %w", err)
-		}
+	if err := s.TryGetAllEntities("hotels", &hotels, "SELECT id FROM hotels"); err != nil {
+		return err
 	}
-	return nil
+	op := []seeder.SeedOperation{{
+		Name: "insert hotel_next_contact_reminders",
+		Query: `INSERT INTO hotel_next_contact_reminders (hotel_id, preferred_communication_channel, message, send_date) 
+				VALUES ($1, $2, $3, $4)`,
+		Builder: func(f *gofakeit.Faker) []interface{} {
+			hotel := models.GetRandomFromSlice(hotels)
+			channel := models.GetRandomFromSlice(models.CommunicationChannels)
+			return []interface{}{
+				hotel.ID,
+				channel,
+				f.Paragraph(1, 2, 5, " "),
+				f.Date(),
+			}
+		},
+	}}
+	return s.BatchSeed(op)
 }
 
 func (s *V5Seeder) seedHotelInteractions() error {
 	var hotels []models.Hotel
 	var reminders []models.HotelNextContactReminder
-	s.db.Find(&hotels)
-	s.db.Find(&reminders)
-
-	for i := 0; i < s.SeedCount; i++ {
-		if len(hotels) == 0 {
-			return fmt.Errorf("no hotels found, cannot seed hotel interactions")
-		}
-
-		var nextContactReminderID *uint
-		if len(reminders) > 0 && gofakeit.Bool() {
-			id := seeder.getRandomFromSlice(reminders).ID
-			nextContactReminderID = &id
-		}
-
-		interaction := models.HotelInteraction{
-			HotelID:               seeder.getRandomFromSlice(hotels).ID,
-			DateUtc:               gofakeit.Date(),
-			CommunicationChannel:  seeder.getRandomFromSlice(models.CommunicationChannels),
-			Type:                  seeder.getRandomFromSlice(models.InteractionTypes),
-			Summary:               gofakeit.Paragraph(1, 2, 5, " "),
-			Agreements:            gofakeit.Paragraph(1, 2, 5, " "),
-			NextContactReminderID: nextContactReminderID,
-		}
-		if err := s.db.Create(&interaction).Error; err != nil {
-			return fmt.Errorf("error seeding hotel interaction: %w", err)
-		}
+	if err := s.TryGetAllEntities("hotels", &hotels, "SELECT id FROM hotels"); err != nil {
+		return err
 	}
-	return nil
+	query := "SELECT id FROM hotel_next_contact_reminders"
+	if err := s.TryGetAllEntities("hotel_next_contact_reminders", &reminders, query); err != nil {
+		return err
+	}
+
+	op := []seeder.SeedOperation{{
+		Name: "insert hotel_interactions",
+		Query: `INSERT INTO hotel_interactions (hotel_id, date_utc, communication_channel, type, summary, agreements, next_contact_reminder_id) 
+				VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		Builder: func(f *gofakeit.Faker) []interface{} {
+			var reminderID interface{} = nil
+			if len(reminders) > 0 && f.Bool() {
+				reminder := models.GetRandomFromSlice(reminders)
+				reminderID = reminder.ID
+			}
+			return []interface{}{
+				models.GetRandomFromSlice(hotels).ID,
+				f.Date(),
+				models.GetRandomFromSlice(models.CommunicationChannels),
+				models.GetRandomFromSlice(models.InteractionTypes),
+				f.Paragraph(1, 2, 5, " "),
+				f.Paragraph(1, 2, 5, " "),
+				reminderID,
+			}
+		},
+	}}
+	return s.BatchSeed(op)
 }

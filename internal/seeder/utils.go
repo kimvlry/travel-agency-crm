@@ -2,24 +2,28 @@ package seeder
 
 import (
 	"fmt"
-	"github.com/jmoiron/sqlx"
-	"log"
-	"os"
+	"github.com/brianvoe/gofakeit/v7"
 	"reflect"
 )
 
-type BaseSeeder struct {
-	Tx        *sqlx.Tx
-	SeedCount int
-	Logger    *log.Logger
+type SeedOperation struct {
+	Name    string
+	Query   string
+	Builder func(f *gofakeit.Faker) []interface{}
 }
 
-func NewBaseSeeder(tx *sqlx.Tx, seedCount int) *BaseSeeder {
-	return &BaseSeeder{
-		Tx:        tx,
-		SeedCount: seedCount,
-		Logger:    log.New(os.Stdout, "[seeder] ", log.LstdFlags),
+func (s *BaseSeeder) BatchSeed(ops []SeedOperation) error {
+	faker := gofakeit.New(0)
+	for _, op := range ops {
+		for i := 0; i < s.SeedCount; i++ {
+			args := op.Builder(faker)
+			if err := s.TryExecute(op.Name, op.Query, args...); err != nil {
+				s.Logger.Printf("error in %q (iteration %d): %v", op.Name, i, err)
+				return err
+			}
+		}
 	}
+	return nil
 }
 
 func (s *BaseSeeder) TryExecute(operationName, query string, args ...interface{}) error {
