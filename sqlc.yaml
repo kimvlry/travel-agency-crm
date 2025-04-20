@@ -1,9 +1,0 @@
-version: "2"
-sql:
-  - schema: "migrations/flyway/sql"
-    engine: "postgresql"
-    queries: "queries"
-    gen:
-      go:
-        package: "models"
-        out: "internal/models"
