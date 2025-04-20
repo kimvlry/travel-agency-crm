@@ -1,8 +1,8 @@
-package seeder
+package models
 
 import "github.com/brianvoe/gofakeit/v7"
 
-func getRandomFromSlice[T any](items []T) T {
+func GetRandomFromSlice[T any](items []T) T {
 	return items[gofakeit.Number(0, len(items)-1)]
 }
 

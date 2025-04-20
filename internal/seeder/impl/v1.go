@@ -1,4 +1,4 @@
-package seeder
+package impl
 
 type V1DummySeeder struct{}
 

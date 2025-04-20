@@ -2,15 +2,14 @@ package main
 
 import (
 	"fmt"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"github.com/jmoiron/sqlx"
 	"log"
 	"os"
 	"strconv"
-	"travel-agency-seeder/internal/seeder"
+	"travel-agency-seeder/internal/seeder/impl"
 )
 
-func connectToDb() *gorm.DB {
+func connectToDb() *sqlx.DB {
 	dbName := os.Getenv("POSTGRES_DB")
 	dbUser := os.Getenv("POSTGRES_USER")
 	dbPassword := os.Getenv("POSTGRES_PASSWORD")
@@ -22,29 +21,29 @@ func connectToDb() *gorm.DB {
 	connectionString := fmt.
 		Sprintf("user=%s password=%s dbname=%s host=postgres port=5432 sslmode=disable",
 			dbUser, dbPassword, dbName)
-	db, err := gorm.Open(postgres.Open(connectionString), &gorm.Config{})
+	db, err := sqlx.Connect("pgx", connectionString)
 	if err != nil {
 		log.Fatal("couldn't connect to db", err)
 	}
 	return db
 }
 
-func ensureSeedHistoryTable(db *gorm.DB) {
-	err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS seed_history (
-			id SERIAL PRIMARY KEY,
-			version VARCHAR(10) NOT NULL UNIQUE,
-			seeded_at TIMESTAMPTZ NOT NULL DEFAULT now()
-		);
-	`).Error
+func ensureSeedHistoryTable(db *sqlx.DB) {
+	query := `
+		create table if not exists seed_history (
+		    id serial primary key,
+		    version varchar(10) not null unique,
+		    seeded_at timestampz not null default now()
+	)`
+	_, err := db.Exec(query)
 	if err != nil {
 		log.Fatalf("failed to create seed_history table: %v", err)
 	}
 }
 
-func checkAppliedSeedVersions(db *gorm.DB) map[string]bool {
+func checkAppliedSeedVersions(db *sqlx.DB) map[string]bool {
 	var versions []string
-	result := db.Table("seed_history").Pluck("version", &versions)
+	result := db.Select(&versions, "select version from seed_history")
 	if result.Error != nil {
 		log.Fatalf("error reading seed_history: %v", result.Error)
 	}
@@ -56,14 +55,12 @@ func checkAppliedSeedVersions(db *gorm.DB) map[string]bool {
 	return applied
 }
 
-func checkAppliedFlywayVersions(db *gorm.DB) map[string]bool {
+func checkAppliedFlywayVersions(db *sqlx.DB) map[string]bool {
 	var versions []string
-	result := db.
-		Table("flyway_schema_history").
-		Where("success = true").
-		Pluck("version", &versions)
-	if result.Error != nil {
-		log.Fatalf("error reading flyway_schema_history: %v", result.Error)
+	query := `select version from flyway_schema_history where success = true`
+	err := db.Select(&versions, query)
+	if err != nil {
+		log.Fatalf("error reading flyway_schema_history: %v", err)
 	}
 
 	applied := make(map[string]bool)
@@ -73,10 +70,12 @@ func checkAppliedFlywayVersions(db *gorm.DB) map[string]bool {
 	return applied
 }
 
-func markSeedingApplied(tx *gorm.DB, version string) error {
-	return tx.Exec(
-		"INSERT INTO seed_history (version) VALUES (?) ON CONFLICT DO NOTHING", version,
-	).Error
+func markSeedingApplied(tx *sqlx.Tx, version string) error {
+	_, err := tx.Exec(`
+        insert into seed_history (version) values ($1)`,
+		version,
+	)
+	return err
 }
 
 func main() {
@@ -91,24 +90,24 @@ func main() {
 	appliedMigrations := checkAppliedFlywayVersions(db)
 	appliedSeedings := checkAppliedSeedVersions(db)
 
-	var seeders = map[string]func(*gorm.DB, int) error{
-		"1": func(db *gorm.DB, count int) error {
-			return seeder.NewV1DummySeeder().Seed()
+	var seeders = map[string]func(*sqlx.Tx, int) error{
+		"1": func(tx *sqlx.Tx, count int) error {
+			return impl.NewV1DummySeeder().Seed()
 		},
-		"2": func(db *gorm.DB, count int) error {
-			return seeder.NewV2Seeder(db, count).Seed()
+		"2": func(tx *sqlx.Tx, count int) error {
+			return impl.NewV2Seeder(tx, count).Seed()
 		},
-		"3": func(db *gorm.DB, count int) error {
-			return seeder.NewV3Seeder(db, count).Seed()
+		"3": func(tx *sqlx.Tx, count int) error {
+			return impl.NewV3Seeder(tx, count).Seed()
 		},
-		"4": func(db *gorm.DB, count int) error {
-			return seeder.NewV4Seeder(db, count).Seed()
+		"4": func(tx *sqlx.Tx, count int) error {
+			return impl.NewV4Seeder(tx, count).Seed()
 		},
-		"5": func(db *gorm.DB, count int) error {
-			return seeder.NewV5Seeder(db, count).Seed()
+		"5": func(tx *sqlx.Tx, count int) error {
+			return impl.NewV5Seeder(tx, count).Seed()
 		},
-		"6": func(db *gorm.DB, count int) error {
-			return seeder.NewV6Seeder(db).Seed()
+		"6": func(tx *sqlx.Tx, count int) error {
+			return impl.NewV6Seeder(tx, count).Seed()
 		},
 	}
 
@@ -122,20 +121,37 @@ func main() {
 			continue
 		}
 
-		err := db.Transaction(func(tx *gorm.DB) error {
-			seedErr := seedFunc(tx, seedCount)
-			if seedErr != nil {
-				return fmt.Errorf("seeding error: %w", seedErr)
+		func() {
+			tx, err := db.Beginx()
+			if err != nil {
+				log.Printf("failed to start transaction: %v", err)
+				return
+			}
+			committed := false
+
+			defer func() {
+				if !committed {
+					if err := tx.Rollback(); err != nil {
+						log.Printf("rollback failed: %v", err)
+					}
+				}
+			}()
+
+			if err := seedFunc(tx, seedCount); err != nil {
+				log.Printf("seeding failed for version %s: %v", version, err)
+				return
 			}
 			if err := markSeedingApplied(tx, version); err != nil {
-				return fmt.Errorf("failed to mark version %s as seeded: %w", version, err)
+				log.Printf("failed to mark version %s as seeded: %v", version, err)
+				return
 			}
-			return nil
-		})
-		if err != nil {
-			log.Printf("transaction for version %s failed: %v\n", version, err)
-		} else {
-			log.Printf("successfully seeded version %s\n", version)
-		}
+			if err := tx.Commit(); err != nil {
+				log.Printf("commit failed for version %s: %v", version, err)
+				return
+			}
+
+			committed = true
+			log.Printf("successfully seeded version %s", version)
+		}()
 	}
 }
