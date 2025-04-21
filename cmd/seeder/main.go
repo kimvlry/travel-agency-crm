@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/elliotchance/orderedmap"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"log"
 	"os"
 	"strconv"
@@ -18,24 +20,26 @@ func connectToDb() *sqlx.DB {
 		log.Fatal("environment variables not set")
 	}
 
-	connectionString := fmt.
-		Sprintf("user=%s password=%s dbname=%s host=postgres port=5432 sslmode=disable",
-			dbUser, dbPassword, dbName)
-	db, err := sqlx.Connect("pgx", connectionString)
+	connStr := fmt.Sprintf(
+		"user=%s password=%s dbname=%s host=postgres port=5432 sslmode=disable",
+		dbUser, dbPassword, dbName,
+	)
+
+	db, err := sqlx.Connect("postgres", connStr)
 	if err != nil {
-		log.Fatal("couldn't connect to db", err)
+		log.Fatalf("couldn't connect to db: %v", err)
 	}
 	return db
 }
 
 func ensureSeedHistoryTable(db *sqlx.DB) {
-	query := `
-		create table if not exists seed_history (
-		    id serial primary key,
-		    version varchar(10) not null unique,
-		    seeded_at timestampz not null default now()
-	)`
-	_, err := db.Exec(query)
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS seed_history (
+			id SERIAL PRIMARY KEY,
+			version VARCHAR(10) NOT NULL UNIQUE,
+			seeded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+		);
+	`)
 	if err != nil {
 		log.Fatalf("failed to create seed_history table: %v", err)
 	}
@@ -43,9 +47,12 @@ func ensureSeedHistoryTable(db *sqlx.DB) {
 
 func checkAppliedSeedVersions(db *sqlx.DB) map[string]bool {
 	var versions []string
-	result := db.Select(&versions, "select version from seed_history")
-	if result.Error != nil {
-		log.Fatalf("error reading seed_history: %v", result.Error)
+	err := db.Select(
+		&versions,
+		"SELECT version FROM seed_history",
+	)
+	if err != nil {
+		log.Fatalf("error reading seed_history: %v", err)
 	}
 
 	applied := make(map[string]bool)
@@ -57,8 +64,10 @@ func checkAppliedSeedVersions(db *sqlx.DB) map[string]bool {
 
 func checkAppliedFlywayVersions(db *sqlx.DB) map[string]bool {
 	var versions []string
-	query := `select version from flyway_schema_history where success = true`
-	err := db.Select(&versions, query)
+	err := db.Select(
+		&versions,
+		"SELECT version FROM flyway_schema_history WHERE success = true",
+	)
 	if err != nil {
 		log.Fatalf("error reading flyway_schema_history: %v", err)
 	}
@@ -71,87 +80,103 @@ func checkAppliedFlywayVersions(db *sqlx.DB) map[string]bool {
 }
 
 func markSeedingApplied(tx *sqlx.Tx, version string) error {
-	_, err := tx.Exec(`
-        insert into seed_history (version) values ($1)`,
-		version,
-	)
+	_, err := tx.Exec(
+		`INSERT INTO seed_history (version) 
+				VALUES ($1) 
+				ON CONFLICT DO NOTHING
+				`,
+		version)
 	return err
+}
+
+func validateSeedersMap(el *orderedmap.Element) (string, func(*sqlx.Tx, int) error, error) {
+	version, ok := el.Key.(string)
+	if !ok {
+		return "", nil, fmt.Errorf("invalid key type for element: %v", el.Key)
+	}
+
+	seedFunc, ok := el.Value.(func(*sqlx.Tx, int) error)
+	if !ok {
+		return "", nil, fmt.Errorf("invalid type for element: %v", el.Value)
+	}
+	return version, seedFunc, nil
+}
+
+func shouldSkipVersion(version string, appliedMigrations map[string]bool, appliedSeedings map[string]bool) bool {
+	if !appliedMigrations[version] {
+		log.Printf("⏭️ skipping version %s (migration not applied)", version)
+		return true
+	}
+	if appliedSeedings[version] {
+		log.Printf("⏭️ skipping version %s (already seeded)", version)
+		return true
+	}
+	return false
 }
 
 func main() {
 	db := connectToDb()
+	defer func(db *sqlx.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Fatal("❌ error closing db")
+		}
+	}(db)
+
 	ensureSeedHistoryTable(db)
 
-	seedCount, errSeed := strconv.Atoi(os.Getenv("SEED_COUNT"))
-	if errSeed != nil {
-		log.Fatal("invalid SEED_COUNT env ", errSeed)
+	seedCount, err := strconv.Atoi(os.Getenv("SEED_COUNT"))
+	if err != nil {
+		log.Fatal("❌ invalid SEED_COUNT env: ", err)
 	}
 
 	appliedMigrations := checkAppliedFlywayVersions(db)
 	appliedSeedings := checkAppliedSeedVersions(db)
 
-	var seeders = map[string]func(*sqlx.Tx, int) error{
-		"1": func(tx *sqlx.Tx, count int) error {
-			return impl.NewV1DummySeeder().Seed()
-		},
-		"2": func(tx *sqlx.Tx, count int) error {
-			return impl.NewV2Seeder(tx, count).Seed()
-		},
-		"3": func(tx *sqlx.Tx, count int) error {
-			return impl.NewV3Seeder(tx, count).Seed()
-		},
-		"4": func(tx *sqlx.Tx, count int) error {
-			return impl.NewV4Seeder(tx, count).Seed()
-		},
-		"5": func(tx *sqlx.Tx, count int) error {
-			return impl.NewV5Seeder(tx, count).Seed()
-		},
-		"6": func(tx *sqlx.Tx, count int) error {
-			return impl.NewV6Seeder(tx, count).Seed()
-		},
-	}
+	m := orderedmap.NewOrderedMap()
+	m.Set("1", func(tx *sqlx.Tx, count int) error { return impl.NewV1DummySeeder().Seed() })
+	m.Set("2", func(tx *sqlx.Tx, count int) error { return impl.NewV2Seeder(tx, count).Seed() })
+	m.Set("3", func(tx *sqlx.Tx, count int) error { return impl.NewV3Seeder(tx, count).Seed() })
+	m.Set("4", func(tx *sqlx.Tx, count int) error { return impl.NewV4Seeder(tx, count).Seed() })
+	m.Set("5", func(tx *sqlx.Tx, count int) error { return impl.NewV5Seeder(tx, count).Seed() })
+	m.Set("6", func(tx *sqlx.Tx, count int) error { return impl.NewV6Seeder(tx, count).Seed() })
 
-	for version, seedFunc := range seeders {
-		if !appliedMigrations[version] {
-			log.Printf("skipping version %s (migration not applied)\n", version)
-			continue
-		}
-		if appliedSeedings[version] {
-			log.Printf("skipping version %s (already seeded)\n", version)
-			continue
+	for el := m.Front(); el != nil; el = el.Next() {
+		version, seedFunc, err := validateSeedersMap(el)
+		if err != nil {
+			log.Fatalf(err.Error())
 		}
 
-		func() {
-			tx, err := db.Beginx()
-			if err != nil {
-				log.Printf("failed to start transaction: %v", err)
-				return
-			}
-			committed := false
+		if shouldSkipVersion(version, appliedMigrations, appliedSeedings) {
+			continue
+		}
+		log.Printf("⏳ seeding version %s...", version)
 
-			defer func() {
-				if !committed {
-					if err := tx.Rollback(); err != nil {
-						log.Printf("rollback failed: %v", err)
-					}
-				}
-			}()
+		tx, err := db.Beginx()
+		if err != nil {
+			log.Fatalf("❌ failed to begin transaction: %v", err)
+		}
 
-			if err := seedFunc(tx, seedCount); err != nil {
-				log.Printf("seeding failed for version %s: %v", version, err)
-				return
+		err = seedFunc(tx, seedCount)
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				log.Printf("❌ failed to rollback transaction for version %s: %v", version, rollbackErr)
 			}
-			if err := markSeedingApplied(tx, version); err != nil {
-				log.Printf("failed to mark version %s as seeded: %v", version, err)
-				return
-			}
-			if err := tx.Commit(); err != nil {
-				log.Printf("commit failed for version %s: %v", version, err)
-				return
-			}
+			log.Fatalf("❌ seeding failed for version %s: %v", version, err)
+		}
 
-			committed = true
-			log.Printf("successfully seeded version %s", version)
-		}()
+		err = markSeedingApplied(tx, version)
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				log.Printf("❌ failed to rollback transaction for version %s: %v", version, rollbackErr)
+			}
+			log.Fatalf("❌ failed to mark version %s as seeded: %v", version, err)
+		}
+
+		if err := tx.Commit(); err != nil {
+			log.Fatalf("❌ transaction commit failed for version %s: %v", version, err)
+		}
+
+		log.Printf("✅ successfully seeded version %s", version)
 	}
 }
