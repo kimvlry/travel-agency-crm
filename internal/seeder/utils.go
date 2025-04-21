@@ -18,8 +18,10 @@ func (s *BaseSeeder) BatchSeed(ops []SeedOperation) error {
 		for i := 0; i < s.SeedCount; i++ {
 			args := op.Builder(faker)
 			if err := s.TryExecute(op.Name, op.Query, args...); err != nil {
-				s.Logger.Printf("error in %q (iteration %d): %v", op.Name, i, err)
+				s.Logger.Printf("[BATCH-SEED:ERROR]} in %q (iteration %d): %v", op.Name, i, err)
 				return err
+			} else {
+				s.Logger.Printf("[BATCH-SEED:SUCCESS] %q (iteration %d)", op.Name, i)
 			}
 		}
 	}
