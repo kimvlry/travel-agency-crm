@@ -8,6 +8,6 @@ RUN go mod download
 COPY . ./
 
 RUN go build -o seeder ./cmd/seeder
-RUN chmod +x /app/seeder
+RUN go build -o monitoring ./cmd/monitoring
 
-CMD ["./seeder"]
+RUN chmod +x /app/seeder /app/monitoring
