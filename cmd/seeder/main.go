@@ -8,9 +8,41 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"travel-agency-seeder/internal"
+	"time"
 	"travel-agency-seeder/internal/seeder/impl"
 )
+
+func ConnectToDb() *sqlx.DB {
+	dbName := os.Getenv("POSTGRES_DB")
+	dbUser := os.Getenv("POSTGRES_USER")
+	dbPassword := os.Getenv("POSTGRES_PASSWORD")
+
+	if dbName == "" || dbUser == "" || dbPassword == "" {
+		log.Fatal("environment variables not set")
+	}
+
+	connStr := fmt.Sprintf(
+		"user=%s password=%s dbname=%s host=postgres port=5432 sslmode=disable",
+		dbUser, dbPassword, dbName,
+	)
+
+	var db *sqlx.DB
+	var err error
+
+	for i := 0; i < 5; i++ {
+		db, err = sqlx.Connect("postgres", connStr)
+		if err == nil {
+			log.Printf("✅ connected to DB")
+			return db
+		}
+
+		log.Printf("⏳ waiting for db... (%v)", err)
+		time.Sleep(3 * time.Second)
+	}
+
+	log.Fatalf("❌ couldn't connect to db after multiple attempts: %v", err)
+	return nil
+}
 
 func ensureSeedHistoryTable(db *sqlx.DB) {
 	_, err := db.Exec(`
@@ -95,7 +127,7 @@ func shouldSkipVersion(version string, appliedMigrations map[string]bool, applie
 }
 
 func main() {
-	db := connect.ToDb()
+	db := ConnectToDb()
 	defer func(db *sqlx.DB) {
 		err := db.Close()
 		if err != nil {
