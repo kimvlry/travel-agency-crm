@@ -1,30 +1,10 @@
-package monitoring
+package db_load_simulation
 
 import (
 	"database/sql"
 	"github.com/jmoiron/sqlx"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
-	"net/http"
 	"time"
-)
-
-var (
-	queryDuration = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name: "query_duration_seconds",
-			Help: "Duration of SQL queries",
-		},
-		[]string{"query"},
-	)
-	queryRows = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "query_result_row_count",
-			Help: "Number of rows returned by query",
-		},
-		[]string{"query"},
-	)
 )
 
 const (
@@ -46,22 +26,8 @@ const (
                             order by b.created_at desc `
 )
 
-func init() {
-	prometheus.MustRegister(queryDuration, queryRows)
-}
-
 func Start(db *sqlx.DB) {
-	log.Printf("⏳ Starting monitoring server on :8080/monitoring ...")
-	go startMetricsServer()
 	go runMetricsLoop(db)
-}
-
-func startMetricsServer() {
-	http.Handle("/metrics", promhttp.Handler())
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func runMetricsLoop(db *sqlx.DB) {
@@ -91,8 +57,5 @@ func runQuery(db *sqlx.DB, title string, query string) {
 	for rows.Next() {
 		count++
 	}
-	log.Printf("✅ query %s executed in %.3f seconds, rows: %d", title, duration, count)
-
-	queryDuration.WithLabelValues(title).Observe(duration)
-	queryRows.WithLabelValues(title).Set(float64(count))
+	log.Printf("query %s executed in %.3f seconds, rows: %d", title, duration, count)
 }

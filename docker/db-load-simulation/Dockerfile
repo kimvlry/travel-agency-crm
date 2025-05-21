@@ -1,0 +1,12 @@
+FROM golang:1.24-alpine
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . ./
+
+RUN go build -o load ./cmd/db-load-simulation
+
+RUN chmod +x /app/load

@@ -5,8 +5,8 @@ services:
     restart: always
     environment:
       POSTGRES_DB: travel_agency_db
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     command: >
       postgres -c shared_preload_libraries=pg_stat_statements
     ports:
@@ -51,7 +51,7 @@ services:
     container_name: seeder
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/seeding/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,11 +67,11 @@ services:
       ANALYST_NAMES: ${ANALYST_NAMES}
     command: [ "sh", "-c", 'if [ "$APP_ENV" = "dev" ]; then ./seeder; fi' ]
 
-  monitoring:
-    container_name: monitoring
+  db-load-simulation:
+    container_name: db-load-simulation-simulation
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/db-load-simulation/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -84,7 +84,7 @@ services:
       APP_ENV: ${APP_ENV}
     ports:
       - "8080:8080"
-    command: [ "sh", "-c", 'if [ "$APP_ENV" = "dev" ]; then ./monitoring; fi' ]
+    command: ["./load"]
 
   prometheus:
     image: prom/prometheus
@@ -92,13 +92,15 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./internal/monitoring:/etc/prometheus
+      - ./internal/db-load-simulation:/etc/prometheus
 
   metrics-exporter:
     image: prometheuscommunity/postgres-exporter:latest
     container_name: metrics-exporter
     environment:
-      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+      DATA_SOURCE_URI: "postgres:5432/${POSTGRES_DB}?sslmode=disable"
+      DATA_SOURCE_USER: ${POSTGRES_USER}
+      DATA_SOURCE_PASS: ${POSTGRES_PASSWORD}
     depends_on:
       - postgres
     ports:
