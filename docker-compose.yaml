@@ -68,7 +68,7 @@ services:
     command: [ "sh", "-c", 'if [ "$APP_ENV" = "dev" ]; then ./seeder; fi' ]
 
   db-load-simulation:
-    container_name: db-load-simulation-simulation
+    container_name: db-load-simulator
     build:
       context: .
       dockerfile: docker/db-load-simulation/Dockerfile
@@ -84,7 +84,6 @@ services:
       APP_ENV: ${APP_ENV}
     ports:
       - "8080:8080"
-    command: ["./load"]
 
   prometheus:
     image: prom/prometheus
@@ -115,6 +114,26 @@ services:
       - grafana-data:/var/lib/grafana
     depends_on:
       - prometheus
+
+  db-backup:
+    build:
+      context: .
+      dockerfile: docker/backup/Dockerfile
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_RETENTION_COUNT: ${BACKUP_RETENTION_COUNT}
+      BACKUP_INTERVAL_CRON: ${BACKUP_INTERVAL_CRON}
+      BACKUP_SCRIPT_PATH: /app/backup.sh
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seeding:
+        condition: service_completed_successfully
+
 
 volumes:
   postgres_data:
