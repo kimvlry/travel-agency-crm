@@ -51,7 +51,7 @@ services:
     container_name: seeder
     build:
       context: .
-      dockerfile: docker/seeding/Dockerfile
+      dockerfile: seeding/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,13 +65,12 @@ services:
       SEED_COUNT: ${SEED_COUNT:-100}
       APP_ENV: ${APP_ENV}
       ANALYST_NAMES: ${ANALYST_NAMES}
-    command: [ "sh", "-c", 'if [ "$APP_ENV" = "dev" ]; then ./seeder; fi' ]
 
   db-load-simulation:
     container_name: db-load-simulator
     build:
       context: .
-      dockerfile: docker/db-load-simulation/Dockerfile
+      dockerfile: db-load-simulation/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,7 +90,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./internal/db-load-simulation:/etc/prometheus
+      - ./db-load-simulation:/etc/prometheus
 
   metrics-exporter:
     image: prometheuscommunity/postgres-exporter:latest
@@ -118,7 +117,7 @@ services:
   db-backup:
     build:
       context: .
-      dockerfile: docker/backup/Dockerfile
+      dockerfile: backup/Dockerfile
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}

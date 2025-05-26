@@ -8,8 +8,8 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"travel-agency-seeder/internal"
-	"travel-agency-seeder/internal/seeder/impl"
+	"travel-agency-seeder/seeding/pkg/impl"
+	connect "travel-agency-seeder/shared"
 )
 
 func ensureSeedHistoryTable(db *sqlx.DB) {

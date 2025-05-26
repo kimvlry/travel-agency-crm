@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
-	"travel-agency-seeder/internal/seeder"
+	"travel-agency-seeder/seeding/pkg"
 )
 
 type V6Seeder struct {

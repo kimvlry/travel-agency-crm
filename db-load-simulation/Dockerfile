@@ -7,7 +7,7 @@ RUN go mod download
 
 COPY . ./
 
-RUN go build -o load ./cmd/db-load-simulation
+RUN go build -o load ./db-load-simulation
 
 RUN chmod +x /app/load
 CMD ["./load"]

@@ -4,8 +4,8 @@ import (
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/jmoiron/sqlx"
 
-	"travel-agency-seeder/internal/models"
-	"travel-agency-seeder/internal/seeder"
+	"travel-agency-seeder/models"
+	"travel-agency-seeder/seeding/pkg"
 )
 
 type V5Seeder struct {

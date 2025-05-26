@@ -1,4 +1,4 @@
-package db_load_simulation
+package simulation
 
 import (
 	"database/sql"

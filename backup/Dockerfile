@@ -9,8 +9,8 @@ RUN go mod download
 
 COPY . ./
 
-RUN go build -o backup-runner ./cmd/backup
+RUN go build -o backup-runner ./backup
 
-COPY internal/backup/backup.sh ./backup.sh
+COPY backup/backup.sh ./backup.sh
 RUN chmod +x ./backup.sh ./backup-runner
 CMD ["./backup-runner"]
