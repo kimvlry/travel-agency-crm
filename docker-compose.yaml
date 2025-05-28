@@ -363,6 +363,8 @@ services:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - postgres-network
 
   metrics-exporter:
     image: prometheuscommunity/postgres-exporter:latest
@@ -386,6 +388,7 @@ services:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - prometheus
     networks:
