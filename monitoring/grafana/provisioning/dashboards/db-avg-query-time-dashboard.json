@@ -2,7 +2,6 @@
   "id": 1,
   "type": "barchart",
   "title": "New panel",
-  "description": "CPU usage\n",
   "gridPos": {
     "x": 0,
     "y": 0,
@@ -40,12 +39,12 @@
         "mode": "absolute",
         "steps": [
           {
-            "color": "green",
-            "value": null
+            "value": null,
+            "color": "green"
           },
           {
-            "color": "red",
-            "value": 80
+            "value": 80,
+            "color": "red"
           }
         ]
       }
@@ -55,41 +54,24 @@
   "pluginVersion": "12.0.0",
   "targets": [
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "een89lhonso3kb"
-      },
-      "disableTextWrap": false,
-      "editorMode": "builder",
-      "expr": "db_load_cpu_usage",
-      "fullMetaSearch": false,
-      "includeNullMetadata": true,
-      "legendFormat": "__auto",
-      "range": true,
       "refId": "A",
-      "useBackend": false
-    },
-    {
       "datasource": {
         "type": "prometheus",
-        "uid": "een89lhonso3kb"
+        "uid": "PBFA97CFB590B2093"
       },
-      "disableTextWrap": false,
       "editorMode": "builder",
-      "expr": "db_load_uptime_seconds",
-      "fullMetaSearch": false,
-      "hide": false,
-      "includeNullMetadata": true,
-      "instant": false,
+      "expr": "avg_over_time({\"\t\t\tdb_query_duration_seconds\"}[5m])",
       "legendFormat": "__auto",
       "range": true,
-      "refId": "B",
-      "useBackend": false
+      "useBackend": false,
+      "disableTextWrap": false,
+      "fullMetaSearch": false,
+      "includeNullMetadata": true
     }
   ],
   "datasource": {
-    "type": "prometheus",
-    "uid": "een89lhonso3kb"
+    "uid": "PBFA97CFB590B2093",
+    "type": "prometheus"
   },
   "options": {
     "orientation": "auto",

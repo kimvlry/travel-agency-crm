@@ -37,14 +37,16 @@ func runMetricsLoop(db *sqlx.DB) {
 		time.Sleep(15 * time.Second)
 	}
 }
-
 func runQuery(db *sqlx.DB, title string, query string) {
 	start := time.Now()
 	rows, err := db.Query(query)
 	duration := time.Since(start).Seconds()
 
+	UpdateQueryTiming(title, duration)
+
 	if err != nil {
 		log.Printf("⚠️ query %s failed: %v", query, err)
+		return
 	}
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
@@ -57,5 +59,5 @@ func runQuery(db *sqlx.DB, title string, query string) {
 	for rows.Next() {
 		count++
 	}
-	log.Printf("query %s executed in %.3f seconds, rows: %d", title, duration, count)
+	log.Printf("✅ query %s executed in %.3f seconds, rows: %d", title, duration, count)
 }
