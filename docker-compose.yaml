@@ -49,6 +49,9 @@ services:
       PATRONI_RESTAPI_LISTEN: 0.0.0.0:8008
       PATRONI_POSTGRESQL_PGPASS: /tmp/pgpass
       PATRONI_LOG_LEVEL: INFO
+      PATRONI_BOOTSTRAP_DCS_TTL: 30
+      PATRONI_BOOTSTRAP_DCS_LOOP_WAIT: 10
+      PATRONI_BOOTSTRAP_DCS_RETRY_TIMEOUT: 30
     volumes:
       - node1_data:/home/postgres/pgdata
     privileged: true
@@ -56,11 +59,11 @@ services:
       etcd:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "curl -s http://localhost:8008 | grep -q 'role' || exit 1" ]
-      interval: 10s
-      timeout: 5s
+      test: [ "CMD-SHELL", "curl -f http://localhost:8008/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
       retries: 10
-      start_period: 120s
+      start_period: 180s
     networks:
       - postgres-network
     restart: unless-stopped
@@ -88,18 +91,23 @@ services:
       PATRONI_RESTAPI_LISTEN: 0.0.0.0:8008
       PATRONI_POSTGRESQL_PGPASS: /tmp/pgpass
       PATRONI_LOG_LEVEL: INFO
+      PATRONI_BOOTSTRAP_DCS_TTL: 30
+      PATRONI_BOOTSTRAP_DCS_LOOP_WAIT: 10
+      PATRONI_BOOTSTRAP_DCS_RETRY_TIMEOUT: 30
     volumes:
       - node2_data:/home/postgres/pgdata
     privileged: true
     depends_on:
       etcd:
         condition: service_healthy
+      node1:
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "curl -s http://localhost:8008 | grep -q 'role' || exit 1" ]
-      interval: 10s
-      timeout: 5s
+      test: [ "CMD-SHELL", "curl -f http://localhost:8008/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
       retries: 10
-      start_period: 120s
+      start_period: 180s
     networks:
       - postgres-network
     restart: unless-stopped
@@ -108,11 +116,11 @@ services:
     image: haproxy:2.8-alpine
     container_name: haproxy
     ports:
-      - "15432:5432"
-      - "15433:5433"
-      - "8404:8404"
+      - "15432:5432"   # Write port
+      - "15433:5433"   # Read port
+      - "8404:8404"    # Stats port
     volumes:
-      - ./patroni:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./patroni/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     depends_on:
       node1:
         condition: service_healthy
@@ -128,46 +136,85 @@ services:
       retries: 3
       start_period: 30s
 
+  cluster-ready:
+    image: curlimages/curl:latest
+    container_name: cluster-ready
+    depends_on:
+      haproxy:
+        condition: service_healthy
+    networks:
+      - postgres-network
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo 'Waiting for PostgreSQL cluster to be ready...'
+        for i in {1..60}; do
+          echo "Attempt $$i: Checking cluster status..."
+        
+          # Check if we can find a master node
+          MASTER_FOUND=false
+          for node in node1 node2; do
+            echo "Checking $$node..."
+            RESPONSE=$$(curl -s http://$$node:8008/master 2>/dev/null || echo "failed")
+            if [ "$$?" -eq 0 ] && [ "$$RESPONSE" != "failed" ]; then
+              echo "Master found on $$node"
+              MASTER_FOUND=true
+              break
+            fi
+          done
+        
+          if [ "$$MASTER_FOUND" = true ]; then
+            echo "Cluster is ready!"
+            exit 0
+          fi
+        
+          echo "Cluster not ready yet, waiting 10 seconds..."
+          sleep 10
+        done
+        
+        echo "ERROR: Cluster failed to become ready within timeout"
+        exit 1
+    restart: "no"
+
   db-init:
     image: postgres:15-alpine
     container_name: db-init
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD:-password}
     depends_on:
-      node1:
-        condition: service_healthy
-      node2:
-        condition: service_healthy
+      cluster-ready:
+        condition: service_completed_successfully
     networks:
       - postgres-network
     entrypoint: ["/bin/sh"]
     command:
       - -c
       - |
-        echo 'Waiting for cluster to be ready...';
-        sleep 30;
+        echo 'Initializing database...'
+        apk add --no-cache curl
         
-        # Определяем лидера через Patroni REST API
-        apk add --no-cache curl;
-        
+        # Find the master node
+        MASTER=""
         for node in node1 node2; do
-          echo "Checking $$node...";
-          RESPONSE=$$(curl -s http://$$node:8008 || echo 'failed');
-          echo "Response from $$node: $$RESPONSE";
-          if echo "$$RESPONSE" | grep -q 'role.*master'; then
-            LEADER=$$node;
-            echo "Found leader: $$LEADER";
-            break;
-          fi;
-        done;
+          echo "Checking $$node for master role..."
+          if curl -s http://$$node:8008/master >/dev/null 2>&1; then
+            MASTER=$$node
+            echo "Master found: $$MASTER"
+            break
+          fi
+        done
         
-        if [ -z "$$LEADER" ]; then
-          echo 'Could not determine leader, will try both nodes';
-        else
-          echo "Leader is $$LEADER";
-        fi;
+        if [ -z "$$MASTER" ]; then
+          echo "ERROR: Could not find master node"
+          exit 1
+        fi
         
-        echo 'Database initialization complete';
+        # Test connection to master
+        echo "Testing connection to master..."
+        psql -h $$MASTER -p 5432 -U postgres -c 'SELECT version();' || exit 1
+        
+        echo 'Database initialization complete'
     restart: "no"
 
   db-create:
@@ -184,41 +231,34 @@ services:
     command:
       - -c
       - |
-        echo 'Creating database...';
-        apk add --no-cache curl;
+        echo 'Creating database...'
+        apk add --no-cache curl
         
-        # Ждем немного больше времени
-        sleep 10;
-        
-        # Определяем лидера через проверку роли в JSON ответе
+        # Find master node
+        MASTER=""
         for node in node1 node2; do
-          echo "Checking $$node for master role...";
-          RESPONSE=$$(curl -s http://$$node:8008 || echo 'failed');
-          echo "Response from $$node: $$RESPONSE";
-          if echo "$$RESPONSE" | grep -q 'role.*master'; then
-            PRIMARY=$$node;
-            echo "Primary node is $$PRIMARY";
-            break;
-          fi;
-        done;
+          if curl -s http://$$node:8008/master >/dev/null 2>&1; then
+            MASTER=$$node
+            break
+          fi
+        done
         
-        if [ -z "$$PRIMARY" ]; then
-          echo 'Could not determine primary node, trying direct connection to node1...';
-          PRIMARY=node1;
-        fi;
+        if [ -z "$$MASTER" ]; then
+          echo "ERROR: Could not find master node"
+          exit 1
+        fi
         
-        echo "Attempting to connect to $$PRIMARY...";
+        # Create database
+        echo "Creating database on $$MASTER..."
+        psql -h $$MASTER -p 5432 -U postgres -c "CREATE DATABASE ${POSTGRES_DB:-travel_agency_db};" || 
+        echo 'Database might already exist'
         
-        # Создаем базу данных на primary
-        psql -h $$PRIMARY -p 5432 -U postgres -c 'CREATE DATABASE ${POSTGRES_DB:-travel_agency_db};' || 
-        echo 'Database might already exist';
-        
-        psql -h $$PRIMARY -p 5432 -U postgres -c '\l' | grep '${POSTGRES_DB:-travel_agency_db}' && 
+        # Verify database creation
+        psql -h $$MASTER -p 5432 -U postgres -c '\l' | grep '${POSTGRES_DB:-travel_agency_db}' && 
         echo 'Database created successfully!' || 
-        echo 'Failed to create database';
+        echo 'Failed to create database'
     restart: "no"
 
-  # run `sqlc generate` after migrations
   flyway:
     image: flyway/flyway:latest-alpine
     container_name: flyway_migrations
@@ -227,49 +267,53 @@ services:
         condition: service_completed_successfully
     environment:
       - MIGRATION_VERSION=${MIGRATION_VERSION:-latest}
+      - POSTGRES_DB=${POSTGRES_DB:-travel_agency_db}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
     entrypoint: ["/bin/bash"]
     command:
       - -c
       - |
-        echo 'Installing dependencies...';
-        apk add --no-cache curl;
+        echo 'Starting Flyway migrations...'
+        apk add --no-cache curl
         
-        echo 'Determining primary node...';
-        for i in 1 2 3 4 5; do
-          for node in node1 node2; do
-            echo "Checking $$node...";
-            RESPONSE=$$(curl -s http://$$node:8008 2>/dev/null);
-            echo "Response from $$node: $$RESPONSE";
-            if echo "$$RESPONSE" | grep -q '"role":"master"'; then
-              PRIMARY=$$node;
-              echo "Primary node is $$PRIMARY";
-              break 2;
-            fi;
-          done;
-          echo "Retry $$i: Could not determine primary, waiting...";
-          sleep 5;
-        done;
+        # Find master node directly
+        MASTER=""
+        for node in node1 node2; do
+          echo "Checking $$node for master role..."
+          if curl -s http://$$node:8008/master >/dev/null 2>&1; then
+            MASTER=$$node
+            echo "Master found: $$MASTER"
+            break
+          fi
+        done
         
-        if [ -z "$$PRIMARY" ]; then
-          echo 'ERROR: Could not determine primary node after retries';
-          echo 'Trying to use HAProxy as fallback...';
-          PRIMARY=haproxy;
-        fi;
+        if [ -z "$$MASTER" ]; then
+          echo "ERROR: Could not find master node"
+          exit 1
+        fi
         
-        export FLYWAY_URL="jdbc:postgresql://$$PRIMARY:5432/${POSTGRES_DB}?user=${POSTGRES_USER}&password=${POSTGRES_PASSWORD}";
-        echo "Connecting to $$FLYWAY_URL";
+        # Use direct connection to master
+        export FLYWAY_URL="jdbc:postgresql://$$MASTER:5432/$${POSTGRES_DB}"
+        export FLYWAY_USER="$${POSTGRES_USER}"
+        export FLYWAY_PASSWORD="$${POSTGRES_PASSWORD}"
         
-        flyway -locations=filesystem:/flyway/sql migrate;
+        echo "Connecting to $$FLYWAY_URL"
+        
+        # Test connection
+        echo 'Testing connection...'
+        flyway -locations=filesystem:/flyway/sql info || exit 1
+        
+        echo 'Running migrations...'
+        flyway -locations=filesystem:/flyway/sql migrate
+        
+        echo 'Migration completed, showing info...'
+        flyway -locations=filesystem:/flyway/sql info
     volumes:
       - ./migrations/flyway/sql:/flyway/sql
     networks:
       - postgres-network
-    healthcheck:
-      test: ["CMD", "flyway", "info"]
-      interval: 10s
-      retries: 5
-      start_period: 30s
-      timeout: 10s
+    restart: "no"
 
   seeding:
     container_name: seeder
@@ -279,8 +323,6 @@ services:
     depends_on:
       flyway:
         condition: service_completed_successfully
-      haproxy:
-        condition: service_healthy
     environment:
       DB_HOST: haproxy
       DB_PORT: "5432"
@@ -315,12 +357,12 @@ services:
       - postgres-network
 
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:latest
     container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ./db-load-simulation/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
 
   metrics-exporter:
     image: prometheuscommunity/postgres-exporter:latest
