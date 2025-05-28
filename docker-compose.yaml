@@ -1,47 +1,271 @@
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: travel_agency_postgres
-    restart: always
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: etcd
     environment:
-      POSTGRES_DB: travel_agency_db
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    command: >
-      postgres -c shared_preload_libraries=pg_stat_statements
+      ETCD_NAME: etcd-node
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd:2380
+      ETCD_INITIAL_CLUSTER: etcd-node=http://etcd:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: etcd-cluster
+      ETCD_AUTO_COMPACTION_RETENTION: "1"
+      ETCD_ENABLE_V2: "true"
+    volumes:
+      - etcd_data:/etcd-data
+    command: etcd
+    healthcheck:
+      test: [ "CMD", "etcdctl", "--endpoints=http://localhost:2379", "endpoint", "health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - postgres-network
+    restart: unless-stopped
+
+  node1:
+    build:
+      context: ./patroni
+      dockerfile: Dockerfile
+    container_name: node1
+    hostname: node1
     ports:
       - "5432:5432"
+      - "8008:8008"
+    environment:
+      PATRONI_NAME: node1
+      PATRONI_SCOPE: postgres-cluster
+      PATRONI_ETCD3_HOSTS: "etcd:2379"
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: node1:5432
+      PATRONI_POSTGRESQL_DATA_DIR: /home/postgres/pgdata
+      PATRONI_REPLICATION_USERNAME: replicator
+      PATRONI_REPLICATION_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      PATRONI_SUPERUSER_USERNAME: postgres
+      PATRONI_SUPERUSER_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      PATRONI_RESTAPI_CONNECT_ADDRESS: node1:8008
+      PATRONI_RESTAPI_LISTEN: 0.0.0.0:8008
+      PATRONI_POSTGRESQL_PGPASS: /tmp/pgpass
+      PATRONI_LOG_LEVEL: INFO
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - node1_data:/home/postgres/pgdata
+    privileged: true
+    depends_on:
+      etcd:
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h postgres" ]
+      test: [ "CMD-SHELL", "curl -s http://localhost:8008 | grep -q 'role' || exit 1" ]
       interval: 10s
-      retries: 5
-      start_period: 30s
-      timeout: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+    networks:
+      - postgres-network
+    restart: unless-stopped
 
-# run `sqlc generate` after migrations
+  node2:
+    build:
+      context: ./patroni
+      dockerfile: Dockerfile
+    container_name: node2
+    hostname: node2
+    ports:
+      - "5433:5432"
+      - "8009:8008"
+    environment:
+      PATRONI_NAME: node2
+      PATRONI_SCOPE: postgres-cluster
+      PATRONI_ETCD3_HOSTS: "etcd:2379"
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: node2:5432
+      PATRONI_POSTGRESQL_DATA_DIR: /home/postgres/pgdata
+      PATRONI_REPLICATION_USERNAME: replicator
+      PATRONI_REPLICATION_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      PATRONI_SUPERUSER_USERNAME: postgres
+      PATRONI_SUPERUSER_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      PATRONI_RESTAPI_CONNECT_ADDRESS: node2:8008
+      PATRONI_RESTAPI_LISTEN: 0.0.0.0:8008
+      PATRONI_POSTGRESQL_PGPASS: /tmp/pgpass
+      PATRONI_LOG_LEVEL: INFO
+    volumes:
+      - node2_data:/home/postgres/pgdata
+    privileged: true
+    depends_on:
+      etcd:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -s http://localhost:8008 | grep -q 'role' || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+    networks:
+      - postgres-network
+    restart: unless-stopped
+
+  haproxy:
+    image: haproxy:2.8-alpine
+    container_name: haproxy
+    ports:
+      - "15432:5432"
+      - "15433:5433"
+      - "8404:8404"
+    volumes:
+      - ./patroni:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      node1:
+        condition: service_healthy
+      node2:
+        condition: service_healthy
+    networks:
+      - postgres-network
+    restart: unless-stopped
+    command: haproxy -f /usr/local/etc/haproxy/haproxy.cfg -d
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep haproxy || exit 1"]
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  db-init:
+    image: postgres:15-alpine
+    container_name: db-init
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-password}
+    depends_on:
+      node1:
+        condition: service_healthy
+      node2:
+        condition: service_healthy
+    networks:
+      - postgres-network
+    entrypoint: ["/bin/sh"]
+    command:
+      - -c
+      - |
+        echo 'Waiting for cluster to be ready...';
+        sleep 30;
+        
+        # Определяем лидера через Patroni REST API
+        apk add --no-cache curl;
+        
+        for node in node1 node2; do
+          echo "Checking $$node...";
+          RESPONSE=$$(curl -s http://$$node:8008 || echo 'failed');
+          echo "Response from $$node: $$RESPONSE";
+          if echo "$$RESPONSE" | grep -q 'role.*master'; then
+            LEADER=$$node;
+            echo "Found leader: $$LEADER";
+            break;
+          fi;
+        done;
+        
+        if [ -z "$$LEADER" ]; then
+          echo 'Could not determine leader, will try both nodes';
+        else
+          echo "Leader is $$LEADER";
+        fi;
+        
+        echo 'Database initialization complete';
+    restart: "no"
+
+  db-create:
+    image: postgres:15-alpine
+    container_name: db-create
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-password}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      - postgres-network
+    entrypoint: ["/bin/sh"]
+    command:
+      - -c
+      - |
+        echo 'Creating database...';
+        apk add --no-cache curl;
+        
+        # Ждем немного больше времени
+        sleep 10;
+        
+        # Определяем лидера через проверку роли в JSON ответе
+        for node in node1 node2; do
+          echo "Checking $$node for master role...";
+          RESPONSE=$$(curl -s http://$$node:8008 || echo 'failed');
+          echo "Response from $$node: $$RESPONSE";
+          if echo "$$RESPONSE" | grep -q 'role.*master'; then
+            PRIMARY=$$node;
+            echo "Primary node is $$PRIMARY";
+            break;
+          fi;
+        done;
+        
+        if [ -z "$$PRIMARY" ]; then
+          echo 'Could not determine primary node, trying direct connection to node1...';
+          PRIMARY=node1;
+        fi;
+        
+        echo "Attempting to connect to $$PRIMARY...";
+        
+        # Создаем базу данных на primary
+        psql -h $$PRIMARY -p 5432 -U postgres -c 'CREATE DATABASE ${POSTGRES_DB:-travel_agency_db};' || 
+        echo 'Database might already exist';
+        
+        psql -h $$PRIMARY -p 5432 -U postgres -c '\l' | grep '${POSTGRES_DB:-travel_agency_db}' && 
+        echo 'Database created successfully!' || 
+        echo 'Failed to create database';
+    restart: "no"
+
+  # run `sqlc generate` after migrations
   flyway:
-    image: flyway/flyway
+    image: flyway/flyway:latest-alpine
     container_name: flyway_migrations
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-create:
+        condition: service_completed_successfully
     environment:
       - MIGRATION_VERSION=${MIGRATION_VERSION:-latest}
-    command: >
-      -url=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      -user=${POSTGRES_USER}
-      -password=${POSTGRES_PASSWORD}
-      -connectRetries=10
-      -locations=filesystem:/flyway/sql
-      -baselineOnMigrate=true
-      -target=${MIGRATION_VERSION}
-      migrate &&
+    entrypoint: ["/bin/bash"]
+    command:
+      - -c
+      - |
+        echo 'Installing dependencies...';
+        apk add --no-cache curl;
+        
+        echo 'Determining primary node...';
+        for i in 1 2 3 4 5; do
+          for node in node1 node2; do
+            echo "Checking $$node...";
+            RESPONSE=$$(curl -s http://$$node:8008 2>/dev/null);
+            echo "Response from $$node: $$RESPONSE";
+            if echo "$$RESPONSE" | grep -q '"role":"master"'; then
+              PRIMARY=$$node;
+              echo "Primary node is $$PRIMARY";
+              break 2;
+            fi;
+          done;
+          echo "Retry $$i: Could not determine primary, waiting...";
+          sleep 5;
+        done;
+        
+        if [ -z "$$PRIMARY" ]; then
+          echo 'ERROR: Could not determine primary node after retries';
+          echo 'Trying to use HAProxy as fallback...';
+          PRIMARY=haproxy;
+        fi;
+        
+        export FLYWAY_URL="jdbc:postgresql://$$PRIMARY:5432/${POSTGRES_DB}?user=${POSTGRES_USER}&password=${POSTGRES_PASSWORD}";
+        echo "Connecting to $$FLYWAY_URL";
+        
+        flyway -locations=filesystem:/flyway/sql migrate;
     volumes:
       - ./migrations/flyway/sql:/flyway/sql
+    networks:
+      - postgres-network
     healthcheck:
-      test: [ "CMD", "flyway", "info" ]
+      test: ["CMD", "flyway", "info"]
       interval: 10s
       retries: 5
       start_period: 30s
@@ -53,11 +277,13 @@ services:
       context: .
       dockerfile: seeding/Dockerfile
     depends_on:
-      postgres:
-        condition: service_healthy
       flyway:
         condition: service_completed_successfully
+      haproxy:
+        condition: service_healthy
     environment:
+      DB_HOST: haproxy
+      DB_PORT: "5432"
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -65,6 +291,8 @@ services:
       SEED_COUNT: ${SEED_COUNT:-100}
       APP_ENV: ${APP_ENV}
       ANALYST_NAMES: ${ANALYST_NAMES}
+    networks:
+      - postgres-network
 
   db-load-simulation:
     container_name: db-load-simulator
@@ -72,17 +300,19 @@ services:
       context: .
       dockerfile: db-load-simulation/Dockerfile
     depends_on:
-      postgres:
-        condition: service_healthy
       seeding:
         condition: service_completed_successfully
     environment:
+      DB_HOST: haproxy
+      DB_PORT: "5432"
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       APP_ENV: ${APP_ENV}
     ports:
       - "8080:8080"
+    networks:
+      - postgres-network
 
   prometheus:
     image: prom/prometheus
@@ -90,19 +320,22 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./db-load-simulation:/etc/prometheus
+      - ./db-load-simulation/prometheus.yml:/etc/prometheus/prometheus.yml
 
   metrics-exporter:
     image: prometheuscommunity/postgres-exporter:latest
     container_name: metrics-exporter
     environment:
-      DATA_SOURCE_URI: "postgres:5432/${POSTGRES_DB}?sslmode=disable"
+      DATA_SOURCE_URI: "haproxy:5432/${POSTGRES_DB}?sslmode=disable"
       DATA_SOURCE_USER: ${POSTGRES_USER}
       DATA_SOURCE_PASS: ${POSTGRES_PASSWORD}
     depends_on:
-      - postgres
+      - haproxy
+      - flyway
     ports:
       - "9187:9187"
+    networks:
+      - postgres-network
 
   grafana:
     image: grafana/grafana:latest
@@ -110,15 +343,19 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - grafana-data:/var/lib/grafana
+      - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
+    networks:
+      - postgres-network
 
   db-backup:
+    container_name: db-backup
     build:
       context: .
       dockerfile: backup/Dockerfile
     environment:
+      DB_HOST: haproxy
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -128,12 +365,17 @@ services:
     volumes:
       - ./backups:/backups
     depends_on:
-      postgres:
-        condition: service_healthy
-      seeding:
+      flyway:
         condition: service_completed_successfully
-
+    networks:
+      - postgres-network
 
 volumes:
-  postgres_data:
-  grafana-data:
+  grafana_data:
+  node1_data:
+  node2_data:
+  prometheus_data:
+  etcd_data:
+
+networks:
+  postgres-network:

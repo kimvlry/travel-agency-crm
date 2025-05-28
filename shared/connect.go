@@ -12,14 +12,16 @@ func ToDb() *sqlx.DB {
 	dbName := os.Getenv("POSTGRES_DB")
 	dbUser := os.Getenv("POSTGRES_USER")
 	dbPassword := os.Getenv("POSTGRES_PASSWORD")
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
 
 	if dbName == "" || dbUser == "" || dbPassword == "" {
 		log.Fatal("environment variables not set")
 	}
 
 	connStr := fmt.Sprintf(
-		"user=%s password=%s dbname=%s host=postgres port=5432 sslmode=disable",
-		dbUser, dbPassword, dbName,
+		"user=%s password=%s dbname=%s host=%s port=%s sslmode=disable",
+		dbUser, dbPassword, dbName, dbHost, dbPort,
 	)
 
 	var db *sqlx.DB

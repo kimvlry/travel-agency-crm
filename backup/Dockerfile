@@ -1,6 +1,6 @@
 FROM golang:1.24-alpine
 
-RUN apk add --no-cache postgresql15-client gzip bash tzdata
+RUN apk add --no-cache postgresql15-client gzip bash tzdata curl
 
 WORKDIR /app
 
