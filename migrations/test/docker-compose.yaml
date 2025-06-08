@@ -26,11 +26,7 @@ services:
       migration-test-postgres:
         condition: service_healthy
     environment:
-      POSTGRES_DB: test_db
-      POSTGRES_USER: test_user
-      POSTGRES_PASSWORD: test_pass
-      DATABASE_URL:
-        postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@migration-test-postgres:5432/${POSTGRES_DB}?sslmode=disable
+      DATABASE_URL: postgres://test_user:test_pass@migration-test-postgres:5432/test_db?sslmode=disable
       DEPTH: ${DEPTH:-0}
     volumes:
       - ../:/workspace
