@@ -7,25 +7,13 @@ on:
 jobs:
   test-migrations:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Docker Compose
+      - name: Run migration tests with Seqwall
         run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-compose
-
-      - name: Build and run Seqwall staircase test
-        env:
-          POSTGRES_DB: travel_agency_db
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          DEPTH: 0
-        run: |
-          docker-compose -f docker-compose.yaml up --build --abort-on-container-exit --exit-code-from seqwall
-
+          docker-compose -f migrations/test/docker-compose.yaml up --build --abort-on-container-exit --exit-code-from seqwall
       - name: Cleanup
         if: always()
-        run: docker-compose -f docker-compose.yaml down -v
+        run: |
+          docker-compose -f migrations/test/docker-compose.yaml down --volumes --remove-orphans
