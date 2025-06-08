@@ -414,42 +414,6 @@ services:
         condition: service_completed_successfully
     networks:
       - postgres-network
-#
-#  migration-test-postgres:
-#    image: postgres:15-alpine
-#    container_name: test-postgres
-#    restart: always
-#    environment:
-#      POSTGRES_DB: ${POSTGRES_DB}
-#      POSTGRES_USER: ${POSTGRES_USER}
-#      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-#    ports:
-#      - "5432:5432"
-#    volumes:
-#      - migration_test_postgres_data:/var/lib/postgresql/data
-#    healthcheck:
-#      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
-#      interval: 10s
-#      retries: 5
-#      start_period: 30s
-#      timeout: 10s
-#    networks:
-#      postgres-network:
-#
-#  seqwall:
-#    build:
-#      context: ./migrations/test
-#    container_name: seqwall
-#    depends_on:
-#      migration-test-postgres:
-#        condition: service_healthy
-#    environment:
-#      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@migration-test-postgres:5432/${POSTGRES_DB}?sslmode=disable
-#      DEPTH: ${DEPTH:-0}
-#    volumes:
-#      - ./migrations:/workspace
-#    networks:
-#      - postgres-network
 
 
 volumes:
@@ -458,7 +422,6 @@ volumes:
   node2_data:
   prometheus_data:
   etcd_data:
-#  migration_test_postgres_data:
 
 networks:
   postgres-network:
