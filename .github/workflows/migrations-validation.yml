@@ -1,0 +1,31 @@
+name: Test DB Migrations
+
+on:
+  push:
+    branches: [ dev ]
+
+jobs:
+  test-migrations:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+
+      - name: Build and run Seqwall staircase test
+        env:
+          POSTGRES_DB: travel_agency_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          DEPTH: 0
+        run: |
+          docker-compose -f docker-compose.yml up --build --abort-on-container-exit --exit-code-from seqwall
+
+      - name: Cleanup
+        if: always()
+        run: docker-compose -f docker-compose.yml down -v
