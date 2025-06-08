@@ -24,8 +24,8 @@ jobs:
           POSTGRES_PASSWORD: postgres
           DEPTH: 0
         run: |
-          docker-compose -f docker-compose.yml up --build --abort-on-container-exit --exit-code-from seqwall
+          docker-compose -f docker-compose.yaml up --build --abort-on-container-exit --exit-code-from seqwall
 
       - name: Cleanup
         if: always()
-        run: docker-compose -f docker-compose.yml down -v
+        run: docker-compose -f docker-compose.yaml down -v
