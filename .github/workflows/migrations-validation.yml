@@ -7,6 +7,13 @@ on:
 jobs:
   test-migrations:
     runs-on: ubuntu-latest
+
+    env:
+      POSTGRES_DB: test_db
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+      DEPTH: 0
+
     steps:
       - uses: actions/checkout@v4
 
