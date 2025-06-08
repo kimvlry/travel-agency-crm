@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS insurances;
+DROP TABLE IF EXISTS insurance_companies;
+DROP TABLE IF EXISTS excursions;
+DROP TABLE IF EXISTS organizers;
+DROP TABLE IF EXISTS transfers;
+DROP TABLE IF EXISTS transport_services;
+DROP TABLE IF EXISTS route_points;
+DROP TABLE IF EXISTS tour_routes;
+DROP TABLE IF EXISTS tour_iterations;

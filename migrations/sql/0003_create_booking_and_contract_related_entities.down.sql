@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS payment_links;
+DROP TABLE IF EXISTS agreement_consents;
+DROP TABLE IF EXISTS consent_templates;
+DROP TABLE IF EXISTS contracts;
+DROP TABLE IF EXISTS contract_templates;
+DROP TABLE IF EXISTS assignees;
+DROP TABLE IF EXISTS booking_agreements;
+DROP TABLE IF EXISTS bookings;
+DROP TABLE IF EXISTS tours;

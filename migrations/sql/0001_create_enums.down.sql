@@ -1,0 +1,10 @@
+DROP TYPE IF EXISTS communication_channel;
+DROP TYPE IF EXISTS interaction_type;
+DROP TYPE IF EXISTS promotion_type;
+DROP TYPE IF EXISTS booking_status;
+DROP TYPE IF EXISTS agreement_consent_type;
+DROP TYPE IF EXISTS consent_status;
+DROP TYPE IF EXISTS meals_type;
+DROP TYPE IF EXISTS notification_type;
+DROP TYPE IF EXISTS insurance_type;
+DROP TYPE IF EXISTS passport_type;

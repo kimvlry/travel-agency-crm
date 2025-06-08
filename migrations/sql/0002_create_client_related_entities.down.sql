@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS promotions;
+DROP TABLE IF EXISTS client_personal_notifications;
+DROP TABLE IF EXISTS notification_templates;
+DROP TABLE IF EXISTS client_interactions;
+DROP TABLE IF EXISTS client_next_contact_reminders;
+DROP TABLE IF EXISTS passports;
+DROP TABLE IF EXISTS bans;
+DROP TABLE IF EXISTS clients;
+DROP TABLE IF EXISTS cities;
+DROP TABLE IF EXISTS countries;
